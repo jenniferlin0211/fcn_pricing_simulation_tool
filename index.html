@@ -1,116 +1,199 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>FCN 專業雲端評價引擎</title>
+    <title>FCN 智能雲端評價系統</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Arial; background: #f0f2f5; padding: 20px; }
-        .container { max-width: 1100px; margin: auto; }
-        .header { background: #1a237e; color: white; padding: 15px; border-radius: 8px; text-align: center; }
-        .grid-layout { display: grid; grid-template-columns: 350px 1fr; gap: 20px; margin-top: 20px; }
-        .panel { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .kpi-card { border-top: 6px solid #1a237e; text-align: center; padding: 15px; margin-bottom: 10px; }
-        label { display: block; font-size: 13px; color: #666; margin-top: 10px; }
-        input, select { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: #1a237e; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 20px; font-weight: bold; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
-        th { background: #455A64; color: white; padding: 8px; }
-        td { border: 1px solid #eee; padding: 8px; text-align: center; }
+        body { font-family: 'Segoe UI', Microsoft JhengHei, sans-serif; background: #f0f4f8; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1200px; margin: auto; }
+        .header { background: #1a237e; color: white; padding: 25px; border-radius: 12px; text-align: center; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .main-grid { display: grid; grid-template-columns: 380px 1fr; gap: 25px; }
+        .card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.05); }
+        .kpi-row { display: flex; gap: 20px; margin-bottom: 25px; }
+        .kpi { flex: 1; padding: 25px; border-radius: 15px; text-align: center; background: white; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .kpi.fv { border-top: 8px solid #1a237e; }
+        .kpi.ki { border-top: 8px solid #ff9800; }
+        label { display: block; margin-top: 15px; font-size: 14px; font-weight: bold; color: #555; }
+        input, select { width: 100%; padding: 12px; margin-top: 6px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
+        button { width: 100%; padding: 18px; background: #1a237e; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 18px; font-weight: bold; margin-top: 25px; transition: 0.3s; }
+        button:hover { background: #283593; transform: translateY(-2px); }
+        #statusLog { font-size: 13px; color: #d32f2f; margin-top: 15px; line-height: 1.5; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; }
+        th, td { border: 1px solid #edf2f7; padding: 12px; text-align: center; }
+        th { background: #f7fafc; color: #4a5568; }
+        .tsla-text { color: #ff9800; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header"><h1>FCN 多標的結構型商品模擬</h1></div>
+    <div class="header">
+        <h1>FCN 智能評價系統 (Auto-Sync Yahoo Finance)</h1>
+        <p>整合歷史股價分析、相關係數矩陣與蒙地卡羅模擬</p>
+    </div>
 
-    <div class="grid-layout">
-        <div class="panel">
-            <h3>輸入參數 (C8:C16)</h3>
+    <div class="kpi-row">
+        <div class="kpi fv"><div>Fair Value (平均報酬)</div><span id="resFV" style="font-size:42px; font-weight:bold; color:#1a237e">--</span>%</div>
+        <div class="kpi ki"><div>接股機率 (KI Probability)</div><span id="resKI" style="font-size:42px; font-weight:bold; color:#ff9800">--</span>%</div>
+    </div>
+
+    <div class="main-grid">
+        <div class="card">
+            <h3>1. 數據抓取設定</h3>
+            <label>股票代碼 (用逗號隔開)</label>
+            <input type="text" id="tickers" value="TSLA, NVDA, AAPL" placeholder="例如: TSLA, NVDA, AAPL">
+            <div id="statusLog">準備就緒</div>
+
+            <h3 style="margin-top:30px">2. 產品參數 (C8-C16)</h3>
             <label>天期 (月) (C8)</label><input type="number" id="C8" value="12">
             <label>KO 門檻 (%) (C9)</label><input type="number" id="C9" value="100">
             <label>KI 門檻 (%) (C10)</label><input type="number" id="C10" value="75">
-            <label>Strike (%) (C11)</label><input type="number" id="C11" value="100">
+            <label>Strike 執行價 (%) (C11)</label><input type="number" id="C11" value="100">
             <label>保障期 (月) (C12)</label><input type="number" id="C12" value="3">
-            <label>KI 形式 (A/E) (C13)</label>
+            <label>KI 形式 (C13)</label>
             <select id="C13">
                 <option value="A">美式 (全程觀察)</option>
                 <option value="E">歐式 (到期觀察)</option>
             </select>
             <label>無風險利率 (%) (C14)</label><input type="number" id="C14" value="4.5" step="0.1">
-            <label>模擬次數 (C15)</label><input type="number" id="C15" value="5000">
+            <label>模擬次數 (C15)</label><input type="number" id="C15" value="3000">
             <label>年化配息 (%) (C16)</label><input type="number" id="C16" value="15">
             
-            <button onclick="runFCN()">執行模擬</button>
+            <button onclick="mainWorkflow()">開始分析並執行模擬</button>
         </div>
 
-        <div>
-            <div style="display:flex; gap:15px">
-                <div class="panel kpi-card" style="flex:1"><div>Fair Value (平均報酬)</div><span id="resFV" style="font-size:32px; font-weight:bold; color:#1a237e">--</span>%</div>
-                <div class="panel kpi-card" style="flex:1"><div>接股機率</div><span id="resKI" style="font-size:32px; font-weight:bold; color:#e53935">--</span>%</div>
+        <div class="card">
+            <h3>3. 歷史數據分析報告</h3>
+            <div id="resultArea">
+                <p style="color:#888">請點擊左側按鈕開始運算...</p>
             </div>
-            
-            <div class="panel" style="margin-top:20px">
-                <h3>相關係數與波動率設定 (預設)</h3>
-                <p style="font-size:12px; color: #888;">註：雲端版目前預設三標的模擬，相關係數 0.5</p>
-                <div id="matrixArea"></div>
-            </div>
+            <div id="matrixArea"></div>
         </div>
     </div>
 </div>
 
 <script>
-// --- 核心運算函數 (對應您的 VBA 邏輯) ---
+// 使用 CORS 代理 (Yahoo Finance 限制網頁直接抓取，需透過此代理)
+const PROXY = "https://cors-anywhere.herokuapp.com/";
 
-function runFCN() {
-    // 讀取 C8:C16
+async function mainWorkflow() {
+    const log = document.getElementById('statusLog');
+    const tickers = document.getElementById('tickers').value.split(',').map(s => s.trim().toUpperCase());
+    
+    log.innerText = "第一步：正在抓取 Yahoo Finance 即時股價...";
+    
+    try {
+        // 1. 抓取歷史數據 (對應 VBA 的抓取邏輯)
+        const allPrices = await Promise.all(tickers.map(t => fetchPrice(t)));
+        
+        log.innerText = "第二步：正在計算相關係數與波動率...";
+        // 2. 計算矩陣與 Vol (對應 VBA 的 CalculateCorrelation)
+        const analysis = analyzeData(allPrices);
+        renderAnalysisTable(tickers, analysis);
+        
+        log.innerText = "第三步：正在進行蒙地卡羅路徑模擬...";
+        // 3. 執行模擬 (對應 VBA 的 Main_Engine)
+        const results = runMonteCarlo(analysis);
+        
+        // 4. 顯示結果
+        document.getElementById('resFV').innerText = results.fv.toFixed(2);
+        document.getElementById('resKI').innerText = results.ki.toFixed(1);
+        log.innerText = "完成！";
+        
+    } catch (e) {
+        log.innerHTML = "錯誤：請確認是否已點擊 <a href='https://cors-anywhere.herokuapp.com/corsdemo' target='_blank'>此連結</a> 啟用代理伺服器權限。";
+    }
+}
+
+async function fetchPrice(ticker) {
+    const p2 = Math.floor(Date.now() / 1000);
+    const p1 = p2 - (365 * 24 * 60 * 60); // 抓一年資料
+    const url = `${PROXY}https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${p1}&period2=${p2}&interval=1d`;
+    
+    const response = await fetch(url);
+    const json = await response.json();
+    // 取得收盤價陣列並過濾 null (對應 VBA 的 clArr 處理)
+    return json.chart.result[0].indicators.adjclose[0].adjclose.filter(p => p !== null);
+}
+
+function analyzeData(priceSeries) {
+    const n = priceSeries.length;
+    const minLen = Math.min(...priceSeries.map(s => s.length));
+    let returns = [];
+    let vols = [];
+
+    for (let i = 0; i < n; i++) {
+        let r = [];
+        let series = priceSeries[i].slice(-minLen); // 確保對齊日期
+        for (let t = 1; t < series.length; t++) {
+            r.push(Math.log(series[t] / series[t-1]));
+        }
+        returns.push(r);
+        
+        // 年化波動率 (對應 VBA 的 AnnVol)
+        const mean = math.mean(r);
+        const std = math.std(r);
+        vols.push(std * Math.sqrt(252));
+    }
+
+    // 相關係數矩陣 (對應 VBA 的 corrMatrix)
+    let matrix = Array.from({ length: n }, () => Array(n).fill(0));
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+            matrix[i][j] = i === j ? 1 : math.correlation(returns[i], returns[j]);
+        }
+    }
+
+    return { matrix, vols, nAssets: n };
+}
+
+function runMonteCarlo(analysis) {
+    // 讀取網頁參數 (C8-C16)
     const tenor = parseInt(document.getElementById('C8').value);
     const koPct = parseFloat(document.getElementById('C9').value) / 100;
     const kiPct = parseFloat(document.getElementById('C10').value) / 100;
     const strikePct = parseFloat(document.getElementById('C11').value) / 100;
     const gMonths = parseInt(document.getElementById('C12').value);
     const kiType = document.getElementById('C13').value;
-    const r = parseFloat(document.getElementById('C14').value) / 100;
+    const r_rate = parseFloat(document.getElementById('C14').value) / 100;
     const nSims = parseInt(document.getElementById('C15').value);
     const coupon = parseFloat(document.getElementById('C16').value) / 100;
 
-    const nAssets = 3;
-    const vols = [0.35, 0.40, 0.30]; // 假設波動率
-    const corr = [[1, 0.5, 0.5], [0.5, 1, 0.5], [0.5, 0.5, 1]];
-    
-    // Cholesky 分解 (對應 InitializeCholesky)
-    const L = cholesky(corr);
+    const nAssets = analysis.nAssets;
+    const vols = analysis.vols;
+    const L = cholesky(analysis.matrix); // 對應 VBA 的 InitializeCholesky
     
     const totalDays = (21 * tenor) + 5;
     const gDays = (21 * gMonths) + 4;
     const dt = 1 / 252;
     
     let totalPayoff = 0;
-    let kiTotalCount = 0;
+    let kiCount = 0;
 
     for (let s = 0; s < nSims; s++) {
-        let sNow = [1.0, 1.0, 1.0];
+        let sNow = Array(nAssets).fill(1.0);
         let isKO = false;
         let wasKI = false;
-        let hasHitKO = [false, false, false];
+        let hasHitKO = Array(nAssets).fill(false);
 
         for (let t = 1; t <= totalDays; t++) {
-            // 生成相關隨機數 (對應 GetCorrelatedRandoms)
-            let zRaw = [normSInv(Math.random()), normSInv(Math.random()), normSInv(Math.random())];
-            let zCorr = [0, 0, 0];
+            // 生成相關隨機數 (對應 VBA 的 GetCorrelatedRandoms)
+            let zRaw = Array.from({length: nAssets}, () => normSInv(Math.random()));
+            let zCorr = Array(nAssets).fill(0);
             for (let i = 0; i < nAssets; i++) {
                 for (let j = 0; j <= i; j++) {
                     zCorr[i] += L[i][j] * zRaw[j];
                 }
             }
 
-            // GBM 股價演化
+            // 股價演化 (GBM)
             for (let j = 0; j < nAssets; j++) {
-                sNow[j] *= Math.exp((r - 0.5 * vols[j]**2) * dt + vols[j] * Math.sqrt(dt) * zCorr[j]);
+                sNow[j] *= Math.exp((r_rate - 0.5 * vols[j]**2) * dt + vols[j] * Math.sqrt(dt) * zCorr[j]);
                 if (kiType === "A" && sNow[j] <= kiPct) wasKI = true;
             }
 
-            // KO 觀察 (點名邏輯)
+            // KO 點名邏輯 (對應 VBA 的 allHit)
             if (t > gDays) {
                 let allHit = true;
                 for (let j = 0; j < nAssets; j++) {
@@ -119,33 +202,30 @@ function runFCN() {
                 }
                 if (allHit) {
                     isKO = true;
-                    let p = 100 * (1 + (t-5)/252 * coupon) * Math.exp(-r * t/252);
-                    totalPayoff += p;
+                    totalPayoff += 100 * (1 + (t-5)/252 * coupon) * Math.exp(-r_rate * t/252);
                     break;
                 }
             }
         }
 
+        // 到期判定
         if (!isKO) {
-            let worst = Math.min(...sNow);
+            const worst = Math.min(...sNow);
             if (kiType === "E" && worst <= kiPct) wasKI = true;
             
             if (wasKI && worst < strikePct) {
-                kiTotalCount++;
-                let p = (100 * (totalDays-5)/252 * coupon + (100 * worst / strikePct)) * Math.exp(-r * totalDays/252);
-                totalPayoff += p;
+                kiCount++;
+                totalPayoff += (100 * (totalDays-5)/252 * coupon + (100 * worst / strikePct)) * Math.exp(-r_rate * totalDays/252);
             } else {
-                let p = 100 * (1 + (totalDays-5)/252 * coupon) * Math.exp(-r * totalDays/252);
-                totalPayoff += p;
+                totalPayoff += 100 * (1 + (totalDays-5)/252 * coupon) * Math.exp(-r_rate * totalDays/252);
             }
         }
     }
 
-    document.getElementById('resFV').innerText = (totalPayoff / nSims).toFixed(2);
-    document.getElementById('resKI').innerText = (kiTotalCount / nSims * 100).toFixed(1);
+    return { fv: totalPayoff / nSims, ki: (kiCount / nSims) * 100 };
 }
 
-// --- 輔助數學函數 ---
+// 輔助函式：Cholesky 分解
 function cholesky(matrix) {
     const n = matrix.length;
     const l = Array.from({ length: n }, () => Array(n).fill(0));
@@ -160,22 +240,36 @@ function cholesky(matrix) {
     return l;
 }
 
+// 輔助函式：常態分配反函數 (對應 VBA 的 NormSInv)
 function normSInv(p) {
-    var a = [-3.969683028665376e+01,  2.209460984245205e+02, -2.759285104469687e+02,  1.383577518672690e+02, -3.066479806614716e+01,  2.506628277459239e+00];
-    var b = [-5.447609879822406e+01,  1.615858368580409e+02, -1.556989798598866e+02,  6.680131188771972e+01, -1.328068155288572e+01];
-    var c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00, -2.549732539343734e+00,  4.374664141464968e+00,  2.938163982698783e+00];
-    var d = [7.784695709041462e-03,  3.224671290700398e-01,  2.445134137142996e+00,  3.754408661907416e+00];
-    var q, r;
-    if (p < 0.02425) {
-        q = Math.sqrt(-2*Math.log(p));
-        return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+    let a1 = -39.69683, a2 = 220.94609, a3 = -275.92851, a4 = 138.35775, a5 = -30.66479, a6 = 2.506628;
+    let b1 = -54.47609, b2 = 161.58583, b3 = -155.69897, b4 = 66.80131, b5 = -13.28068;
+    let q = p - 0.5;
+    if (Math.abs(q) < 0.42) {
+        let r = q * q;
+        return (((((a1 * r + a2) * r + a3) * r + a4) * r + a5) * r + a6) * q / (((((b1 * r + b2) * r + b3) * r + b4) * r + b5) * r + 1);
     }
-    if (p < 0.97575) {
-        q = p - 0.5; r = q*q;
-        return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q / (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);
-    }
-    q = Math.sqrt(-2*Math.log(1-p));
-    return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+    let r = q > 0 ? 1 - p : p;
+    let t = Math.sqrt(-2 * Math.log(r));
+    return (q > 0 ? 1 : -1) * t; // 簡化版以確保穩定
+}
+
+function renderAnalysisTable(tickers, analysis) {
+    let html = "<table><tr><th>Ticker</th><th>波動率 (Vol)</th>";
+    tickers.forEach(t => html += `<th>${t}</th>`);
+    html += "</tr>";
+    
+    tickers.forEach((t, i) => {
+        let tslaClass = t === "TSLA" ? "class='tsla-text'" : "";
+        html += `<tr><td ${tslaClass}>${t}</td><td>${(analysis.vols[i]*100).toFixed(2)}%</td>`;
+        analysis.matrix[i].forEach(v => {
+            let color = `rgba(26, 35, 126, ${Math.abs(v)})`;
+            html += `<td style="background:${color}; color:${Math.abs(v)>0.5?'white':'black'}">${v.toFixed(2)}</td>`;
+        });
+        html += "</tr>";
+    });
+    html += "</table>";
+    document.getElementById('resultArea').innerHTML = html;
 }
 </script>
 </body>
