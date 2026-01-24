@@ -6,23 +6,22 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
-        .container { max-width: 1440px; margin: auto; }
-        .header { background: #008080; color: white; padding: 18px 25px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background: #f4f7f9; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1400px; margin: auto; }
+        .header { background: #008080; color: white; padding: 15px 25px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .main-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
-        .sidebar { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); height: fit-content; }
-        .content-area { display: flex; flex-direction: column; gap: 20px; }
-        .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
-        .kpi-box { background: white; padding: 20px; border-radius: 15px; text-align: center; border-top: 6px solid #008080; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        .wide-card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .sidebar { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); height: fit-content; }
+        .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+        .kpi-box { background: white; padding: 20px; border-radius: 15px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.03); border-top: 6px solid #008080; }
+        .wide-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-bottom: 20px; width: 100%; box-sizing: border-box; }
         .viz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .viz-card { background: white; padding: 20px; border-radius: 15px; min-height: 400px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .viz-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); min-height: 380px; }
         h4 { margin: 15px 0 5px 0; color: #008080; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         label { display: block; margin-top: 10px; font-size: 12px; font-weight: bold; color: #666; }
-        input, select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 8px; }
-        button { width: 100%; padding: 15px; background: #008080; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; transition: 0.2s; }
-        button:hover { background: #006666; transform: scale(1.01); }
-        #status { font-size: 13px; margin-top: 12px; padding: 12px; border-radius: 8px; display: none; line-height: 1.5; }
+        input, select { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; background: #008080; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; transition: 0.3s; }
+        button:hover { background: #006666; transform: translateY(-2px); }
+        #status { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 6px; display: none; }
     </style>
 </head>
 <body>
@@ -30,7 +29,7 @@
 <div class="container">
     <div class="header">
         <h2 style="margin:0">FCN 智能雲端分析儀表板</h2>
-        <div id="vTag">v6.2 Stable | Time-Series Analytics</div>
+        <span id="vTag">v6.3 - Final Stable Edition</span>
     </div>
 
     <div class="main-layout">
@@ -63,18 +62,18 @@
             </div>
 
             <div class="wide-card">
-                <h3 style="margin-top:0">全情境機率分佈 (Time-to-Event Distribution)</h3>
-                <div style="height: 320px;"><canvas id="scenarioChart"></canvas></div>
+                <h3 style="margin:0 0 15px 0">全情境機率分佈 (按月趨勢)</h3>
+                <div style="height: 280px; width: 100%;"><canvas id="scenarioChart"></canvas></div>
             </div>
 
             <div class="viz-grid">
                 <div class="viz-card">
-                    <h3 style="color:#008080">相關係數熱圖 (Correlation Matrix)</h3>
+                    <h3 style="color:#008080">相關係數熱圖 (Teal Map)</h3>
                     <div id="heatmap" style="height:350px;"></div>
                 </div>
                 <div class="viz-card">
-                    <h3 style="color:#e53935">接股風險貢獻 % (Risk Weighting)</h3>
-                    <div style="height:320px;"><canvas id="riskChart"></canvas></div>
+                    <h3 style="color:#e53935">接股風險貢獻 % (Risk Contribution)</h3>
+                    <div style="height: 320px;"><canvas id="riskChart"></canvas></div>
                 </div>
             </div>
         </div>
@@ -88,54 +87,41 @@ async function runWorkflow() {
     const status = document.getElementById('status');
     const tickers = document.getElementById('tickers').value.split(',').map(s => s.trim().toUpperCase());
     status.style.display = "block";
-    status.style.background = "#e6fffa";
-    status.innerText = "⏳ 正在從 Yahoo Finance 獲取即時數據...";
+    status.innerText = "⏳ 數據計算中...";
 
     try {
         const allPrices = await Promise.all(tickers.map(t => fetchPrice(t)));
-        status.innerText = "📉 數據獲取成功，開始計算矩陣與進行蒙地卡羅模擬...";
-        
         const analysis = analyzeData(allPrices);
         const results = simulateFCN(analysis);
-        
-        if (!results) throw new Error("模擬計算失敗");
-        
         updateUI(tickers, analysis, results);
-        status.style.background = "#f0fff4";
-        status.innerText = "✅ 分析完成！所有數據已更新。";
+        status.innerText = "✅ 模擬完成！";
     } catch (e) {
-        status.style.background = "#fff5f5";
         status.innerText = "❌ 錯誤: " + e.message;
-        console.error("Workflow Error:", e);
+        console.error(e);
     }
 }
 
 async function fetchPrice(ticker) {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y`;
     const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
-    if(!res.ok) throw new Error(`${ticker} 數據獲取失敗，請檢查代號`);
     const data = await res.json();
     return data.chart.result[0].indicators.adjclose[0].adjclose.filter(p => p !== null);
 }
 
-// 基礎統計工具
-const stats = {
-    mean: arr => arr.reduce((a, b) => a + b, 0) / arr.length,
-    std: arr => {
-        const m = stats.mean(arr);
-        return Math.sqrt(arr.reduce((a, b) => a + Math.pow(b - m, 2), 0) / (arr.length - 1));
-    },
-    corr: (x, y) => {
-        const mx = stats.mean(x), my = stats.mean(y);
-        let num = 0, dx2 = 0, dy2 = 0;
-        for (let i = 0; i < x.length; i++) {
-            const dx = x[i] - mx, dy = y[i] - my;
-            num += dx * dy; dx2 += dx * dx; dy2 += dy * dy;
-        }
-        return num / Math.sqrt(dx2 * dy2);
+function getMean(arr) { return arr.reduce((a, b) => a + b, 0) / arr.length; }
+function getStd(arr) {
+    const m = getMean(arr);
+    return Math.sqrt(arr.reduce((a, b) => a + Math.pow(b - m, 2), 0) / (arr.length - 1));
+}
+function getCorr(x, y) {
+    const mx = getMean(x), my = getMean(y);
+    let num = 0, dx2 = 0, dy2 = 0;
+    for (let i = 0; i < x.length; i++) {
+        const dx = x[i] - mx, dy = y[i] - my;
+        num += dx * dy; dx2 += dx * dx; dy2 += dy * dy;
     }
-};
-
+    return num / Math.sqrt(dx2 * dy2);
+}
 function rndNormal() {
     let u = 0, v = 0;
     while(u === 0) u = Math.random();
@@ -144,15 +130,15 @@ function rndNormal() {
 }
 
 function analyzeData(priceSeries) {
-    const n = priceSeries.length;
-    let returns = priceSeries.map(s => {
+    const nAssets = priceSeries.length;
+    const returns = priceSeries.map(s => {
         let r = [];
         for(let i=1; i<s.length; i++) r.push(Math.log(s[i]/s[i-1]));
         return r;
     });
-    let vols = returns.map(r => stats.std(r) * Math.sqrt(252));
-    let matrix = Array.from({length:n}, (_,i) => Array.from({length:n}, (_,j) => i===j ? 1 : stats.corr(returns[i], returns[j])));
-    return { matrix, vols, nAssets: n };
+    const vols = returns.map(r => getStd(r) * Math.sqrt(252));
+    const matrix = Array.from({length:nAssets}, (_,i) => Array.from({length:nAssets}, (_,j) => i===j ? 1 : getCorr(returns[i], returns[j])));
+    return { matrix, vols, nAssets };
 }
 
 function simulateFCN(analysis) {
@@ -161,7 +147,7 @@ function simulateFCN(analysis) {
     const ki = parseFloat(document.getElementById('C10').value)/100;
     const strike = parseFloat(document.getElementById('C11').value)/100;
     const guard = parseInt(document.getElementById('C12').value) || 1;
-    const kiType = document.getElementById('C13').value;
+    const type = document.getElementById('C13').value;
     const rf = parseFloat(document.getElementById('C14').value)/100;
     const sims = parseInt(document.getElementById('C15').value) || 3000;
     const cpn = parseFloat(document.getElementById('C16').value)/100;
@@ -170,26 +156,26 @@ function simulateFCN(analysis) {
     const dt = 1/252;
     
     let totalPayoff = 0, kiCount = 0, totalDur = 0;
-    let kiCounters = Array(analysis.nAssets).fill(0);
-    let monthlyKO = Array(tenor + 1).fill(0); 
+    let kiCounters = new Array(analysis.nAssets).fill(0);
+    let monthlyKO = new Array(tenor + 1).fill(0); 
     let finalRedemption = 0, finalKI = 0;
 
     for(let s=0; s<sims; s++) {
-        let S = Array(analysis.nAssets).fill(1.0);
+        let S = new Array(analysis.nAssets).fill(1.0);
         let isKO = false, wasKI = false;
         let koMonth = -1;
 
         for(let m=1; m<=tenor; m++) {
             for(let d=1; d<=21; d++) {
                 let zRaw = Array.from({length: analysis.nAssets}, () => rndNormal());
-                let zCorr = Array(analysis.nAssets).fill(0);
+                let zCorr = new Array(analysis.nAssets).fill(0);
                 for(let i=0; i<analysis.nAssets; i++) {
                     for(let j=0; j<=i; j++) zCorr[i] += L[i][j] * zRaw[j];
                     S[i] *= Math.exp((rf - 0.5 * analysis.vols[i]**2)*dt + analysis.vols[i]*Math.sqrt(dt)*zCorr[i]);
-                    if(kiType === "A" && S[i] <= ki) wasKI = true;
+                    if(type === "A" && S[i] <= ki) wasKI = true;
                 }
             }
-            if(m > guard) {
+            if(m > guard && !isKO) {
                 if(Math.min(...S) >= ko) {
                     isKO = true; koMonth = m;
                     monthlyKO[m]++;
@@ -198,10 +184,9 @@ function simulateFCN(analysis) {
                 }
             }
         }
-
         if(!isKO) {
             let worst = Math.min(...S);
-            if(kiType === "E" && worst <= ki) wasKI = true;
+            if(type === "E" && worst <= ki) wasKI = true;
             if(wasKI && worst < strike) {
                 finalKI++; kiCount++;
                 kiCounters[S.indexOf(worst)]++;
@@ -235,36 +220,35 @@ function updateUI(tickers, analysis, res) {
     document.getElementById('vDur').innerText = res.avgDur.toFixed(1);
     document.getElementById('vRet').innerText = (((res.fv-100)/Math.max(0.1, res.avgDur))*12).toFixed(2) + "%";
 
-    // 1. Teal Heat Map
+    // 1. Teal Map
     Plotly.newPlot('heatmap', [{
         z: analysis.matrix, x: tickers, y: tickers, type: 'heatmap',
         colorscale: [[0, '#e0f2f1'], [0.5, '#4db6ac'], [1, '#008080']],
         text: analysis.matrix.map(row => row.map(v => v.toFixed(2))),
-        texttemplate: "%{text}", showscale: true
-    }], { margin: {t:0, b:40, l:40, r:0}, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' });
+        texttemplate: "%{text}"
+    }], { margin: {t:0, b:40, l:40, r:0} });
 
-    // 2. Scenario Timeline Chart (修復 Map 報錯點)
+    // 2. Scenario Chart - 強制檢查防呆
     if(charts.scene) charts.scene.destroy();
-    const koData = (res.monthlyKO || []).slice(1);
-    let labels = koData.map((_, i) => `${i+1}月 KO`);
-    let data = koData.map(v => (v/res.sims*100).toFixed(1));
-    let colors = Array(koData.length).fill('#4db6ac');
-
-    labels.push('安全到期', '接股結算');
-    data.push((res.finalRedemption/res.sims*100).toFixed(1), (res.finalKI/res.sims*100).toFixed(1));
-    colors.push('#1a237e', '#e53935');
+    const koData = res.monthlyKO ? res.monthlyKO.slice(1) : [];
+    const labels = koData.map((_, i) => `${i+1}月 KO`).concat(['安全到期', '接股結算']);
+    const data = koData.map(v => (v/res.sims*100).toFixed(1)).concat([
+        (res.finalRedemption/res.sims*100).toFixed(1),
+        (res.finalKI/res.sims*100).toFixed(1)
+    ]);
+    const colors = koData.map(() => '#4db6ac').concat(['#1a237e', '#e53935']);
 
     charts.scene = new Chart(document.getElementById('scenarioChart'), {
         type: 'bar',
-        data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderRadius: 5 }] },
+        data: { labels: labels, datasets: [{ data: data, backgroundColor: colors }] },
         options: { 
             responsive: true, maintainAspectRatio: false,
             plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true, ticks: { callback: v => v + '%' }, grid: { color: '#eee' } }, x: { grid: { display: false } } }
+            scales: { y: { beginAtZero: true, ticks: { callback: v => v + '%' } } }
         }
     });
 
-    // 3. Risk Bar %
+    // 3. Risk Bar
     if(charts.risk) charts.risk.destroy();
     charts.risk = new Chart(document.getElementById('riskChart'), {
         type: 'bar',
@@ -275,11 +259,7 @@ function updateUI(tickers, analysis, res) {
                 backgroundColor: tickers.map(t=>t==='TSLA'?'#ed8936':'#e53935')
             }]
         },
-        options: { 
-            indexAxis: 'y',
-            plugins: { legend: { display: false } },
-            scales: { x: { beginAtZero: true, ticks: { callback: v => v + '%' } } }
-        }
+        options: { indexAxis: 'y', plugins: { legend: { display: false } } }
     });
 }
 </script>
