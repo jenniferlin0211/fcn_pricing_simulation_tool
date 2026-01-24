@@ -2,30 +2,31 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>FCN 專業全功能評價儀表板</title>
+    <title>FCN 專業評價 - VBA 邏輯對齊版</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background: #f4f7f9; margin: 0; padding: 20px; }
         .container { max-width: 1500px; margin: auto; }
-        .header { background: #008080; color: white; padding: 15px 25px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .header { background: #008080; color: white; padding: 15px 25px; border-radius: 12px; margin-bottom: 20px; }
         .main-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
         .sidebar { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
-        .kpi-box { background: white; padding: 20px; border-radius: 15px; text-align: center; border-top: 6px solid #008080; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
+        .kpi-box { background: white; padding: 20px; border-radius: 15px; text-align: center; border-top: 6px solid #008080; }
         .wide-card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-bottom: 20px; }
-        h4 { margin: 15px 0 5px 0; color: #008080; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .viz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .viz-card { background: white; padding: 20px; border-radius: 15px; min-height: 400px; }
         label { display: block; margin-top: 10px; font-size: 12px; font-weight: bold; color: #666; }
-        input, select { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; }
+        input, select { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; }
+        button { width: 100%; padding: 15px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; margin-top: 20px; }
         #status { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 8px; display: none; background: #e6fffa; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header"><h2>FCN 智能評價分析 - 邏輯嚴謹版</h2></div>
+    <div class="header"><h2>FCN 智能評價儀表板 (VBA 點名機制對齊)</h2></div>
 
     <div class="main-layout">
         <div class="sidebar">
@@ -38,29 +39,30 @@
             <label>Strike (%)</label><input type="number" id="C11" value="75">
             <label>KO Start (月)</label><input type="number" id="C12" value="1">
             <label>KI Type</label>
-            <select id="C13">
-                <option value="A">美式 (全程觀察)</option>
-                <option value="E">歐式 (僅看期末)</option>
-            </select>
+            <select id="C13"><option value="A">美式 (全程)</option><option value="E">歐式 (期末)</option></select>
             <label>無風險利率 (%)</label><input type="number" id="C14" value="4.5">
-            <h4>3. 模擬設定</h4>
             <label>模擬次數</label><input type="number" id="idSims" value="1000">
             <label>年化配息 (%)</label><input type="number" id="C16" value="15">
-            <button onclick="runWorkflow()">執行精準模擬</button>
+            <button onclick="runWorkflow()">同步 VBA 邏輯運行</button>
             <div id="status"></div>
         </div>
 
         <div class="content-area">
             <div class="kpi-row">
                 <div class="kpi-box"><div>Fair Value</div><div id="vFV" style="font-size:32px; font-weight:bold; color:#008080">--</div></div>
-                <div class="kpi-box" style="border-top-color:#ed8936"><div>接股頻次</div><div id="vKI" style="font-size:32px; font-weight:bold; color:#ed8936">--</div></div>
-                <div class="kpi-box" style="border-top-color:#38b2ac"><div>平均存續 (月)</div><div id="vDur" style="font-size:32px; font-weight:bold; color:#38b2ac">--</div></div>
-                <div class="kpi-box" style="border-top-color:#667eea"><div>年化回報</div><div id="vRet" style="font-size:32px; font-weight:bold; color:#667eea">--</div></div>
+                <div class="kpi-box" style="border-top-color:#ed8936"><div>接股次數</div><div id="vKI" style="font-size:32px; font-weight:bold; color:#ed8936">--</div></div>
+                <div class="kpi-box" style="border-top-color:#38b2ac"><div>平均存續 (天)</div><div id="vDur" style="font-size:32px; font-weight:bold; color:#38b2ac">--</div></div>
+                <div class="kpi-box" style="border-top-color:#667eea"><div>預期回報</div><div id="vRet" style="font-size:32px; font-weight:bold; color:#667eea">--</div></div>
             </div>
 
             <div class="wide-card">
-                <h3 style="margin-top:0">情境分佈詳情 (1~14 必須加總 = 總次數)</h3>
-                <div style="height: 400px; width: 100%;"><canvas id="scenarioChart"></canvas></div>
+                <h3>情境分佈詳情 (對齊 VBA 21天/月 點名邏輯)</h3>
+                <div style="height: 350px;"><canvas id="scenarioChart"></canvas></div>
+            </div>
+
+            <div class="viz-grid">
+                <div class="viz-card"><h3>相關係數矩陣 (Teal Heat Map)</h3><div id="heatmap" style="height:350px;"></div></div>
+                <div class="viz-card"><h3>接股風險貢獻 (By Asset)</h3><canvas id="riskChart"></canvas></div>
             </div>
         </div>
     </div>
@@ -73,16 +75,15 @@ let charts = {};
 async function runWorkflow() {
     const status = document.getElementById('status');
     const tickers = document.getElementById('tickers').value.split(',').map(s => s.trim().toUpperCase());
-    status.style.display = "block"; status.innerText = "⏳ 正在分析實時波動率...";
+    status.style.display = "block"; status.innerText = "⏳ 正在獲取數據並同步 VBA 點名機制...";
+    
     try {
         const allPrices = await Promise.all(tickers.map(t => fetchPrice(t)));
         const analysis = analyzeData(allPrices);
         const results = simulateFCN(analysis);
-        updateUI(results);
-        status.innerText = "✅ 計算完成";
-    } catch (e) {
-        status.innerText = "❌ 錯誤: " + e.message;
-    }
+        updateUI(tickers, analysis, results);
+        status.innerText = "✅ 完成";
+    } catch (e) { status.innerText = "❌ 錯誤: " + e.message; }
 }
 
 async function fetchPrice(ticker) {
@@ -119,13 +120,12 @@ function simulateFCN(analysis) {
     const ko = parseFloat(document.getElementById('C9').value)/100;
     const ki = parseFloat(document.getElementById('C10').value)/100;
     const strike = parseFloat(document.getElementById('C11').value)/100;
-    const koStart = parseInt(document.getElementById('C12').value);
+    const gStart = parseInt(document.getElementById('C12').value);
     const kiType = document.getElementById('C13').value;
     const rf = parseFloat(document.getElementById('C14').value)/100;
     const sims = parseInt(document.getElementById('idSims').value);
     const cpn = parseFloat(document.getElementById('C16').value)/100;
 
-    // Cholesky
     const n = analysis.nAssets;
     const L = Array.from({length:n},()=>Array(n).fill(0));
     for(let i=0; i<n; i++) {
@@ -135,82 +135,99 @@ function simulateFCN(analysis) {
         }
     }
 
-    let res = { koCounts: new Array(tenor).fill(0), safe: 0, ki: 0, payoffs: 0, durations: 0, totalSims: sims };
+    let res = { koCounts: new Array(12).fill(0), safe: 0, ki: 0, kiAssetCounts: new Array(n).fill(0), payoffs: 0, durations: 0 };
+    const gPeriodDays = (21 * gStart) + 4;
+    const totalDays = (21 * tenor) + 5;
 
     for(let s=0; s<sims; s++) {
         let S = new Array(n).fill(1.0);
-        let wasKI = false, hasKO = false;
+        let wasKI = false, isKO = false;
+        let hasStockHitKO = new Array(n).fill(false);
 
-        for(let m=0; m<tenor; m++) {
-            let days = (m === 0) ? 26 : 21;
-            for(let d=0; d<days; d++) {
-                let zRaw = Array.from({length:n}, () => {
-                    let u=0, v=0; while(u===0) u=Math.random(); while(v===0) v=Math.random();
-                    return Math.sqrt(-2.0*Math.log(u))*Math.cos(2.0*Math.PI*v);
-                });
-                for(let i=0; i<n; i++){
-                    let zCorr = 0; for(let j=0; j<=i; j++) zCorr += L[i][j] * zRaw[j];
-                    S[i] *= Math.exp((rf - 0.5 * analysis.vols[i]**2)*(1/252) + analysis.vols[i]*Math.sqrt(1/252)*zCorr);
-                    if(kiType === "A" && S[i] <= ki) wasKI = true;
-                }
+        for(let T=1; T<=totalDays; T++) {
+            let zRaw = Array.from({length:n}, () => {
+                let u=0, v=0; while(u===0) u=Math.random(); while(v===0) v=Math.random();
+                return Math.sqrt(-2.0*Math.log(u))*Math.cos(2.0*Math.PI*v);
+            });
+            for(let i=0; i<n; i++){
+                let zCorr = 0; for(let j=0; j<=i; j++) zCorr += L[i][j] * zRaw[j];
+                S[i] *= Math.exp((rf - 0.5 * analysis.vols[i]**2)*(1/252) + analysis.vols[i]*Math.sqrt(1/252)*zCorr);
+                if(kiType === "A" && S[i] <= ki) wasKI = true;
             }
-            // 檢查 KO (必須在 koStart 之後且還沒發生 KO)
-            if(!hasKO && (m+1) >= koStart && Math.min(...S) >= ko) {
-                res.koCounts[m]++;
-                res.payoffs += 100 * (1 + (26+m*21)/252*cpn) * Math.exp(-rf*(26+m*21)/252);
-                res.durations += (m+1);
-                hasKO = true;
-                break; // 提前結束
+
+            // VBA 點名邏輯
+            if(T > gPeriodDays) {
+                for(let j=0; j<n; j++) if(S[j] >= ko) hasStockHitKO[j] = true;
+                if(hasStockHitKO.every(val => val === true)) {
+                    isKO = true;
+                    let koMonth = Math.min(12, Math.floor((T - 6) / 21) + 1);
+                    res.koCounts[koMonth-1]++;
+                    res.payoffs += 100 * (1 + (T-5)/252*cpn) * Math.exp(-rf*T/252);
+                    res.durations += T;
+                    break;
+                }
             }
         }
 
-        // 如果走完天期都沒 KO
-        if(!hasKO) {
-            res.durations += tenor;
+        if(!isKO) {
+            res.durations += totalDays;
             let worst = Math.min(...S);
             if(kiType === "E" && worst <= ki) wasKI = true;
-            
             if(wasKI && worst < strike) {
-                res.ki++; // 發生接股 (情境 14)
-                res.payoffs += (100 * (tenor*21)/252*cpn + 100*worst/strike) * Math.exp(-rf*1);
+                res.ki++;
+                res.kiAssetCounts[S.indexOf(worst)]++;
+                res.payoffs += (100*(totalDays-5)/252*cpn + 100*worst/strike) * Math.exp(-rf*totalDays/252);
             } else {
-                res.safe++; // 安全到期 (情境 13)
-                res.payoffs += 100 * (1 + (tenor*21)/252*cpn) * Math.exp(-rf*1);
+                res.safe++;
+                res.payoffs += 100 * (1 + (totalDays-5)/252*cpn) * Math.exp(-rf*totalDays/252);
             }
         }
     }
     return res;
 }
 
-function updateUI(res) {
-    document.getElementById('vFV').innerText = (res.payoffs/res.totalSims).toFixed(2);
+function updateUI(tickers, analysis, res) {
+    const sims = parseInt(document.getElementById('idSims').value);
+    document.getElementById('vFV').innerText = (res.payoffs/sims).toFixed(2);
     document.getElementById('vKI').innerText = res.ki + " 次";
-    document.getElementById('vDur').innerText = (res.durations/res.totalSims).toFixed(1) + "月";
-    document.getElementById('vRet').innerText = (((res.payoffs/res.totalSims)-100)/(res.durations/res.totalSims)*12).toFixed(2) + "%";
+    document.getElementById('vDur').innerText = (res.durations/sims).toFixed(0) + " 天";
+    document.getElementById('vRet').innerText = (((res.payoffs/sims)-100)/(res.durations/sims/252)*1).toFixed(2) + "%";
 
+    // 1. Scenario Chart
     if(charts.scene) charts.scene.destroy();
-    
     let labels = res.koCounts.map((_, i) => `情境${i+1}\n(${i===0?'1-26':(i*21+6)+'-'+((i+1)*21+5)}天)`);
     labels.push("情境13\n安全到期", "情境14\n發生接股");
-    let counts = [...res.koCounts, res.safe, res.ki];
-
     charts.scene = new Chart(document.getElementById('scenarioChart'), {
         type: 'bar',
         data: {
             labels: labels,
             datasets: [{
-                data: counts,
-                backgroundColor: labels.map((_, i) => i < res.koCounts.length ? '#4db6ac' : (i === labels.length-2 ? '#1a237e' : '#e53935'))
+                data: [...res.koCounts, res.safe, res.ki],
+                backgroundColor: labels.map((_, i) => i < 12 ? '#4db6ac' : (i === 12 ? '#1a237e' : '#e53935'))
             }]
         },
         options: {
             responsive: true, maintainAspectRatio: false,
-            plugins: {
-                datalabels: { anchor: 'end', align: 'top', color: '#444', font: { weight: 'bold' } },
-                legend: { display: false }
-            },
-            scales: { y: { beginAtZero: true, grid: { display: false } } }
+            plugins: { datalabels: { anchor: 'end', align: 'top', font: { weight: 'bold' } }, legend: { display: false } }
         }
+    });
+
+    // 2. Heatmap
+    Plotly.newPlot('heatmap', [{
+        z: analysis.matrix, x: tickers, y: tickers, type: 'heatmap',
+        colorscale: [[0, '#e0f2f1'], [0.5, '#4db6ac'], [1, '#008080']],
+        text: analysis.matrix.map(row => row.map(v => v.toFixed(2))), texttemplate: "%{text}"
+    }], { margin: {t:0, b:40, l:40, r:0} });
+
+    // 3. Risk Chart
+    if(charts.risk) charts.risk.destroy();
+    charts.risk = new Chart(document.getElementById('riskChart'), {
+        type: 'bar',
+        data: {
+            labels: tickers,
+            datasets: [{ data: res.kiAssetCounts.map(v => (v/sims*100).toFixed(1)), backgroundColor: '#e53935' }]
+        },
+        options: { indexAxis: 'y', plugins: { legend: { display: false }, datalabels: { formatter: v => v + '%' } } }
     });
 }
 </script>
