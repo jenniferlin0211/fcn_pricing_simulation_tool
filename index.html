@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>FCN 專業全功能評價儀表板</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
@@ -21,8 +20,8 @@
         input, select { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
         button { width: 100%; padding: 15px; background: #1a237e; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; transition: 0.3s; }
         button:hover { background: #283593; transform: translateY(-2px); }
-        #status { font-size: 12px; margin-top: 12px; padding: 10px; border-radius: 6px; background: #fff5f5; border: 1px solid #feb2b2; color: #c53030; display: none; }
-        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        #status { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 6px; display: none; line-height: 1.4; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px; }
         th, td { padding: 8px; border-bottom: 1px solid #eee; text-align: left; }
     </style>
 </head>
@@ -31,13 +30,13 @@
 <div class="container">
     <div class="header">
         <h2 style="margin:0">FCN 智能雲端分析儀表板</h2>
-        <span id="vTag">Stable v2.5 - 免授權數據源</span>
+        <span id="vTag">Stable v3.0 - 原生統計運算版</span>
     </div>
 
     <div class="main-layout">
         <div class="sidebar">
             <h4>1. 標的設定</h4>
-            <label>股票代號 (用英文逗號隔開)</label>
+            <label>股票代號 (例如: TSLA, NVDA)</label>
             <input type="text" id="tickers" value="TSLA, NVDA, AAPL">
 
             <h4>2. 產品條件 (C8-C14)</h4>
@@ -48,7 +47,7 @@
             <label>保障期 (月) (C12)</label><input type="number" id="C12" value="3">
             <label>KI 形式 (C13)</label>
             <select id="C13"><option value="A">美式 (全程)</option><option value="E">歐式 (到期)</option></select>
-            <label>無風險利率 (%) (C14)</label><input type="number" id="C14" value="4.5">
+            <label>無風險利率 (%) (C14)</label><input type="number" id="C14" value="4.5" step="0.1">
 
             <h4>3. 模擬設定 (C15-C16)</h4>
             <label>模擬次數 (C15)</label><input type="number" id="C15" value="3000">
@@ -60,10 +59,10 @@
 
         <div class="content-area">
             <div class="kpi-row">
-                <div class="kpi-box"><div>Fair Value</div><div id="vFV" class="kpi-value" style="color:#1a237e">--</div></div>
-                <div class="kpi-box" style="border-top-color:#ed8936"><div>接股機率</div><div id="vKI" class="kpi-value" style="color:#ed8936">--</div></div>
-                <div class="kpi-box" style="border-top-color:#38b2ac"><div>存續期 (月)</div><div id="vDur" class="kpi-value" style="color:#38b2ac">--</div></div>
-                <div class="kpi-box" style="border-top-color:#667eea"><div>預期年回報</div><div id="vRet" class="kpi-value" style="color:#667eea">--</div></div>
+                <div class="kpi-box"><div>Fair Value</div><div id="vFV" style="font-size:32px; font-weight:bold; color:#1a237e">--</div></div>
+                <div class="kpi-box" style="border-top-color:#ed8936"><div>接股機率</div><div id="vKI" style="font-size:32px; font-weight:bold; color:#ed8936">--</div></div>
+                <div class="kpi-box" style="border-top-color:#38b2ac"><div>存續期 (月)</div><div id="vDur" style="font-size:32px; font-weight:bold; color:#38b2ac">--</div></div>
+                <div class="kpi-box" style="border-top-color:#667eea"><div>預期年回報</div><div id="vRet" style="font-size:32px; font-weight:bold; color:#667eea">--</div></div>
             </div>
 
             <div class="viz-grid">
@@ -72,7 +71,7 @@
                     <div id="heatmap" style="height:320px;"></div>
                 </div>
                 <div class="viz-card">
-                    <h3>情境機率分佈 (Scenario)</h3>
+                    <h3>情境機率分佈 (Scenario Analysis)</h3>
                     <canvas id="scenarioChart"></canvas>
                 </div>
                 <div class="viz-card">
@@ -81,7 +80,7 @@
                 </div>
                 <div class="viz-card">
                     <h3>資產波動率分析 (Ann. Vol)</h3>
-                    <div id="volTable" style="margin-top:20px"></div>
+                    <div id="volTable"></div>
                 </div>
             </div>
         </div>
@@ -97,24 +96,21 @@ async function runWorkflow() {
     
     status.style.display = "block";
     status.style.background = "#ebf8ff";
-    status.style.borderColor = "#bee3f8";
     status.style.color = "#2b6cb0";
-    status.innerText = "🚀 正在抓取 Yahoo Finance 數據...";
+    status.innerText = "🚀 正在下載數據...";
 
     try {
         const allPrices = await Promise.all(tickers.map(t => fetchPrice(t)));
-        status.innerText = "📊 數據抓取成功，計算矩陣中...";
+        status.innerText = "📊 計算矩陣中...";
         
         const analysis = analyzeData(allPrices);
         const results = simulateFCN(analysis);
         
         updateUI(tickers, analysis, results);
         status.style.background = "#f0fff4";
-        status.style.borderColor = "#c6f6d5";
         status.style.color = "#2f855a";
         status.innerText = "✅ 模擬完成！";
     } catch (e) {
-        status.style.display = "block";
         status.style.background = "#fff5f5";
         status.style.color = "#c53030";
         status.innerText = "❌ 錯誤: " + e.message;
@@ -123,17 +119,37 @@ async function runWorkflow() {
 
 async function fetchPrice(ticker) {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y`;
-    // 使用目前最穩定的透明代理
     const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
     
     const res = await fetch(proxyUrl);
     if (!res.ok) throw new Error(`${ticker} 抓取失敗`);
     const data = await res.json();
     
-    if (!data.chart || !data.chart.result) throw new Error(`${ticker} 代號錯誤`);
+    if (!data.chart || !data.chart.result) throw new Error(`${ticker} 無數據`);
     const prices = data.chart.result[0].indicators.adjclose[0].adjclose.filter(p => p !== null);
-    if (prices.length < 50) throw new Error(`${ticker} 歷史數據不足`);
     return prices;
+}
+
+// --- 手寫統計函式，解決 math.correlation 報錯問題 ---
+function getMean(arr) { return arr.reduce((a, b) => a + b, 0) / arr.length; }
+function getStd(arr) {
+    const m = getMean(arr);
+    return Math.sqrt(arr.reduce((a, b) => a + Math.pow(b - m, 2), 0) / (arr.length - 1));
+}
+function getCorr(x, y) {
+    const mx = getMean(x), my = getMean(y);
+    let num = 0, dx2 = 0, dy2 = 0;
+    for (let i = 0; i < x.length; i++) {
+        const dx = x[i] - mx, dy = y[i] - my;
+        num += dx * dy; dx2 += dx * dx; dy2 += dy * dy;
+    }
+    return num / Math.sqrt(dx2 * dy2);
+}
+function rndNormal() {
+    let u = 0, v = 0;
+    while(u === 0) u = Math.random();
+    while(v === 0) v = Math.random();
+    return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
 }
 
 function analyzeData(priceSeries) {
@@ -143,9 +159,8 @@ function analyzeData(priceSeries) {
         for(let i=1; i<s.length; i++) r.push(Math.log(s[i]/s[i-1]));
         return r;
     });
-    
-    let vols = returns.map(r => math.std(r) * Math.sqrt(252));
-    let matrix = Array.from({length:n}, (_,i) => Array.from({length:n}, (_,j) => i===j ? 1 : math.correlation(returns[i], returns[j])));
+    let vols = returns.map(r => getStd(r) * Math.sqrt(252));
+    let matrix = Array.from({length:n}, (_,i) => Array.from({length:n}, (_,j) => i===j ? 1 : getCorr(returns[i], returns[j])));
     return { matrix, vols, nAssets: n };
 }
 
@@ -175,7 +190,7 @@ function simulateFCN(analysis) {
         let dayReached = totalDays;
 
         for(let t=1; t<=totalDays; t++) {
-            let zRaw = Array.from({length: analysis.nAssets}, () => math.randomNormal(0, 1));
+            let zRaw = Array.from({length: analysis.nAssets}, () => rndNormal());
             let zCorr = Array(analysis.nAssets).fill(0);
             for(let i=0; i<analysis.nAssets; i++) {
                 for(let j=0; j<=i; j++) zCorr[i] += L[i][j] * zRaw[j];
@@ -222,7 +237,7 @@ function cholesky(m) {
         for(let j=0; j<=i; j++) {
             let s = 0;
             for(let k=0; k<j; k++) s += l[i][k] * l[j][k];
-            l[i][j] = (i===j) ? Math.sqrt(m[i][i]-s) : (m[i][j]-s)/l[j][j];
+            l[i][j] = (i===j) ? Math.sqrt(Math.max(0, m[i][i]-s)) : (m[i][j]-s)/l[j][j];
         }
     }
     return l;
@@ -232,16 +247,13 @@ function updateUI(tickers, analysis, res) {
     document.getElementById('vFV').innerText = res.fv.toFixed(2);
     document.getElementById('vKI').innerText = res.ki.toFixed(1) + "%";
     document.getElementById('vDur').innerText = res.avgDur.toFixed(1);
-    document.getElementById('vRet').innerText = (((res.fv-100)/res.avgDur)*12).toFixed(2) + "%";
+    document.getElementById('vRet').innerText = (((res.fv-100)/Math.max(1, res.avgDur))*12).toFixed(2) + "%";
 
-    // 1. Heatmap (Teal Style)
     Plotly.newPlot('heatmap', [{
         z: analysis.matrix, x: tickers, y: tickers, type: 'heatmap',
-        colorscale: [[0, '#e0f2f1'], [0.5, '#4db6ac'], [1, '#008080']],
-        showscale: true
+        colorscale: [[0, '#e0f2f1'], [0.5, '#4db6ac'], [1, '#008080']]
     }], { margin: {t:0, b:40, l:40, r:0} });
 
-    // 2. Scenario Pie
     if(charts.scene) charts.scene.destroy();
     charts.scene = new Chart(document.getElementById('scenarioChart'), {
         type: 'doughnut',
@@ -249,7 +261,6 @@ function updateUI(tickers, analysis, res) {
         options: { plugins: { legend: { position: 'bottom' } } }
     });
 
-    // 3. Risk Bar (TSLA Orange)
     if(charts.risk) charts.risk.destroy();
     charts.risk = new Chart(document.getElementById('riskChart'), {
         type: 'bar',
@@ -257,7 +268,6 @@ function updateUI(tickers, analysis, res) {
         options: { indexAxis: 'y', plugins: { legend: { display: false } } }
     });
 
-    // 4. Vol Table
     let vHtml = "<table><tr><th>資產</th><th>年化波動率</th></tr>";
     tickers.forEach((t, i) => vHtml += `<tr><td>${t}</td><td><b>${(analysis.vols[i]*100).toFixed(2)}%</b></td></tr>`);
     document.getElementById('volTable').innerHTML = vHtml + "</table>";
