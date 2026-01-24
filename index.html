@@ -2,31 +2,33 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>FCN 專業評價 - VBA 邏輯對齊版</title>
+    <title>結構型商品模擬分析</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background: #f4f7f9; margin: 0; padding: 20px; }
         .container { max-width: 1500px; margin: auto; }
-        .header { background: #008080; color: white; padding: 15px 25px; border-radius: 12px; margin-bottom: 20px; }
+        .header { background: #008080; color: white; padding: 15px 25px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .main-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
         .sidebar { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
-        .kpi-box { background: white; padding: 20px; border-radius: 15px; text-align: center; border-top: 6px solid #008080; }
+        .kpi-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px; }
+        .kpi-box { background: white; padding: 20px; border-radius: 15px; text-align: center; border-top: 6px solid #008080; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
         .wide-card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-bottom: 20px; }
         .viz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .viz-card { background: white; padding: 20px; border-radius: 15px; min-height: 400px; }
+        .viz-card { background: white; padding: 20px; border-radius: 15px; min-height: 420px; }
+        h4 { margin: 15px 0 5px 0; color: #008080; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         label { display: block; margin-top: 10px; font-size: 12px; font-weight: bold; color: #666; }
-        input, select { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; }
-        button { width: 100%; padding: 15px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; margin-top: 20px; }
+        input, select { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; transition: 0.3s; }
+        button:hover { background: #006666; }
         #status { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 8px; display: none; background: #e6fffa; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header"><h2>FCN 智能評價儀表板 (VBA 點名機制對齊)</h2></div>
+    <div class="header"><h2 style="margin:0">結構型商品模擬分析 (蒙地卡羅模型)</h2></div>
 
     <div class="main-layout">
         <div class="sidebar">
@@ -38,31 +40,30 @@
             <label>KI 門檻 (%)</label><input type="number" id="C10" value="60">
             <label>Strike (%)</label><input type="number" id="C11" value="75">
             <label>KO Start (月)</label><input type="number" id="C12" value="1">
-            <label>KI Type</label>
+            <label>KI 形式</label>
             <select id="C13"><option value="A">美式 (全程)</option><option value="E">歐式 (期末)</option></select>
             <label>無風險利率 (%)</label><input type="number" id="C14" value="4.5">
+            <h4>3. 模擬設定</h4>
             <label>模擬次數</label><input type="number" id="idSims" value="1000">
             <label>年化配息 (%)</label><input type="number" id="C16" value="15">
-            <button onclick="runWorkflow()">同步 VBA 邏輯運行</button>
+            <button onclick="runWorkflow()">執行蒙地卡羅模型模擬</button>
             <div id="status"></div>
         </div>
 
         <div class="content-area">
             <div class="kpi-row">
-                <div class="kpi-box"><div>Fair Value</div><div id="vFV" style="font-size:32px; font-weight:bold; color:#008080">--</div></div>
-                <div class="kpi-box" style="border-top-color:#ed8936"><div>接股次數</div><div id="vKI" style="font-size:32px; font-weight:bold; color:#ed8936">--</div></div>
-                <div class="kpi-box" style="border-top-color:#38b2ac"><div>平均存續 (天)</div><div id="vDur" style="font-size:32px; font-weight:bold; color:#38b2ac">--</div></div>
-                <div class="kpi-box" style="border-top-color:#667eea"><div>預期回報</div><div id="vRet" style="font-size:32px; font-weight:bold; color:#667eea">--</div></div>
+                <div class="kpi-box"><div>Fair Value (理論價值)</div><div id="vFV" style="font-size:32px; font-weight:bold; color:#008080">--</div></div>
+                <div class="kpi-box" style="border-top-color:#38b2ac"><div>平均存續期間 (天數)</div><div id="vDur" style="font-size:32px; font-weight:bold; color:#38b2ac">--</div></div>
             </div>
 
             <div class="wide-card">
-                <h3>情境分佈詳情 (對齊 VBA 21天/月 點名邏輯)</h3>
-                <div style="height: 350px;"><canvas id="scenarioChart"></canvas></div>
+                <h3 style="margin-top:0">情境分佈詳情</h3>
+                <div style="height: 380px;"><canvas id="scenarioChart"></canvas></div>
             </div>
 
             <div class="viz-grid">
-                <div class="viz-card"><h3>相關係數矩陣 (Teal Heat Map)</h3><div id="heatmap" style="height:350px;"></div></div>
-                <div class="viz-card"><h3>接股風險貢獻 (By Asset)</h3><canvas id="riskChart"></canvas></div>
+                <div class="viz-card"><h3>相關係數矩陣</h3><div id="heatmap" style="height:350px;"></div></div>
+                <div class="viz-card"><h3>接股風險貢獻</h3><canvas id="riskChart"></canvas></div>
             </div>
         </div>
     </div>
@@ -75,14 +76,13 @@ let charts = {};
 async function runWorkflow() {
     const status = document.getElementById('status');
     const tickers = document.getElementById('tickers').value.split(',').map(s => s.trim().toUpperCase());
-    status.style.display = "block"; status.innerText = "⏳ 正在獲取數據並同步 VBA 點名機制...";
-    
+    status.style.display = "block"; status.innerText = "⏳ 模擬運算中...";
     try {
         const allPrices = await Promise.all(tickers.map(t => fetchPrice(t)));
         const analysis = analyzeData(allPrices);
         const results = simulateFCN(analysis);
         updateUI(tickers, analysis, results);
-        status.innerText = "✅ 完成";
+        status.innerText = "✅ 模擬完成";
     } catch (e) { status.innerText = "❌ 錯誤: " + e.message; }
 }
 
@@ -154,8 +154,6 @@ function simulateFCN(analysis) {
                 S[i] *= Math.exp((rf - 0.5 * analysis.vols[i]**2)*(1/252) + analysis.vols[i]*Math.sqrt(1/252)*zCorr);
                 if(kiType === "A" && S[i] <= ki) wasKI = true;
             }
-
-            // VBA 點名邏輯
             if(T > gPeriodDays) {
                 for(let j=0; j<n; j++) if(S[j] >= ko) hasStockHitKO[j] = true;
                 if(hasStockHitKO.every(val => val === true)) {
@@ -168,14 +166,12 @@ function simulateFCN(analysis) {
                 }
             }
         }
-
         if(!isKO) {
             res.durations += totalDays;
             let worst = Math.min(...S);
             if(kiType === "E" && worst <= ki) wasKI = true;
             if(wasKI && worst < strike) {
-                res.ki++;
-                res.kiAssetCounts[S.indexOf(worst)]++;
+                res.ki++; res.kiAssetCounts[S.indexOf(worst)]++;
                 res.payoffs += (100*(totalDays-5)/252*cpn + 100*worst/strike) * Math.exp(-rf*totalDays/252);
             } else {
                 res.safe++;
@@ -189,9 +185,7 @@ function simulateFCN(analysis) {
 function updateUI(tickers, analysis, res) {
     const sims = parseInt(document.getElementById('idSims').value);
     document.getElementById('vFV').innerText = (res.payoffs/sims).toFixed(2);
-    document.getElementById('vKI').innerText = res.ki + " 次";
-    document.getElementById('vDur').innerText = (res.durations/sims).toFixed(0) + " 天";
-    document.getElementById('vRet').innerText = (((res.payoffs/sims)-100)/(res.durations/sims/252)*1).toFixed(2) + "%";
+    document.getElementById('vDur').innerText = (res.durations/sims).toFixed(0);
 
     // 1. Scenario Chart
     if(charts.scene) charts.scene.destroy();
@@ -208,18 +202,19 @@ function updateUI(tickers, analysis, res) {
         },
         options: {
             responsive: true, maintainAspectRatio: false,
-            plugins: { datalabels: { anchor: 'end', align: 'top', font: { weight: 'bold' } }, legend: { display: false } }
+            plugins: { datalabels: { anchor: 'end', align: 'top', font: { weight: 'bold' } }, legend: { display: false } },
+            scales: { y: { beginAtZero: true, grid: { display: false } } }
         }
     });
 
     // 2. Heatmap
     Plotly.newPlot('heatmap', [{
         z: analysis.matrix, x: tickers, y: tickers, type: 'heatmap',
-        colorscale: [[0, '#e0f2f1'], [0.5, '#4db6ac'], [1, '#008080']],
+        colorscale: [[0, '#f2fdfd'], [0.5, '#4db6ac'], [1, '#008080']],
         text: analysis.matrix.map(row => row.map(v => v.toFixed(2))), texttemplate: "%{text}"
     }], { margin: {t:0, b:40, l:40, r:0} });
 
-    // 3. Risk Chart
+    // 3. Risk Chart (修正標籤到右側)
     if(charts.risk) charts.risk.destroy();
     charts.risk = new Chart(document.getElementById('riskChart'), {
         type: 'bar',
@@ -227,7 +222,25 @@ function updateUI(tickers, analysis, res) {
             labels: tickers,
             datasets: [{ data: res.kiAssetCounts.map(v => (v/sims*100).toFixed(1)), backgroundColor: '#e53935' }]
         },
-        options: { indexAxis: 'y', plugins: { legend: { display: false }, datalabels: { formatter: v => v + '%' } } }
+        options: { 
+            indexAxis: 'y',
+            responsive: true, maintainAspectRatio: false,
+            plugins: { 
+                legend: { display: false },
+                datalabels: { 
+                    anchor: 'end', 
+                    align: 'right', 
+                    formatter: v => v + '%',
+                    font: { weight: 'bold', size: 12 },
+                    offset: 5
+                } 
+            },
+            scales: { 
+                x: { beginAtZero: true, max: Math.max(...res.kiAssetCounts.map(v => v/sims*100)) + 15, grid: { display: false } },
+                y: { grid: { display: false } }
+            },
+            layout: { padding: { right: 50 } }
+        }
     });
 }
 </script>
