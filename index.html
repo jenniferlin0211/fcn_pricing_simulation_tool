@@ -6,26 +6,22 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background: #f4f7f9; margin: 0; padding: 20px; color: #333; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f9; margin: 0; padding: 20px; color: #333; }
         .container { max-width: 1400px; margin: auto; }
-        .header { background: #1a237e; color: white; padding: 15px 25px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .header { background: #008080; color: white; padding: 15px 25px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .main-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
         .sidebar { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); height: fit-content; }
         .content-area { display: flex; flex-direction: column; gap: 20px; }
         .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
-        .kpi-box { background: white; padding: 20px; border-radius: 15px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.03); border-top: 6px solid #1a237e; }
-        
-        /* 橫向跨全頁板塊 */
-        .wide-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); width: 100%; box-sizing: border-box; }
-        
+        .kpi-box { background: white; padding: 20px; border-radius: 15px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.03); border-top: 6px solid #008080; }
+        .wide-card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
         .viz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .viz-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); min-height: 380px; }
-        
-        h4 { margin: 15px 0 5px 0; color: #1a237e; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .viz-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); min-height: 400px; }
+        h4 { margin: 15px 0 5px 0; color: #008080; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         label { display: block; margin-top: 10px; font-size: 12px; font-weight: bold; color: #666; }
         input, select { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; background: #1a237e; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; transition: 0.3s; }
-        button:hover { background: #283593; transform: translateY(-2px); }
+        button { width: 100%; padding: 15px; background: #008080; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; transition: 0.3s; }
+        button:hover { background: #006666; transform: translateY(-2px); }
         #status { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 6px; display: none; }
     </style>
 </head>
@@ -34,7 +30,7 @@
 <div class="container">
     <div class="header">
         <h2 style="margin:0">FCN 智能雲端分析儀表板</h2>
-        <span id="vTag">v5.0 Stable - Full Width Layout</span>
+        <span id="vTag">v6.0 - Time-Series Scenario Distribution</span>
     </div>
 
     <div class="main-layout">
@@ -42,7 +38,6 @@
             <h4>1. 標的設定</h4>
             <label>股票代號</label>
             <input type="text" id="tickers" value="TSM, NVDA, TSLA">
-
             <h4>2. 產品條件</h4>
             <label>天期 (月)</label><input type="number" id="C8" value="12">
             <label>KO 門檻 (%)</label><input type="number" id="C9" value="100">
@@ -52,38 +47,34 @@
             <label>KI 形式</label>
             <select id="C13"><option value="A">美式 (全程)</option><option value="E">歐式 (到期)</option></select>
             <label>無風險利率 (%)</label><input type="number" id="C14" value="4.5" step="0.1">
-
             <h4>3. 模擬設定</h4>
             <label>模擬次數</label><input type="number" id="C15" value="3000">
             <label>年化配息 (%)</label><input type="number" id="C16" value="15">
-
             <button onclick="runWorkflow()">開始分析並模擬</button>
             <div id="status"></div>
         </div>
 
         <div class="content-area">
             <div class="kpi-row">
-                <div class="kpi-box"><div>Fair Value</div><div id="vFV" style="font-size:32px; font-weight:bold; color:#1a237e">--</div></div>
+                <div class="kpi-box"><div>Fair Value</div><div id="vFV" style="font-size:32px; font-weight:bold; color:#008080">--</div></div>
                 <div class="kpi-box" style="border-top-color:#ed8936"><div>接股機率</div><div id="vKI" style="font-size:32px; font-weight:bold; color:#ed8936">--</div></div>
                 <div class="kpi-box" style="border-top-color:#38b2ac"><div>存續期 (月)</div><div id="vDur" style="font-size:32px; font-weight:bold; color:#38b2ac">--</div></div>
                 <div class="kpi-box" style="border-top-color:#667eea"><div>預期年回報</div><div id="vRet" style="font-size:32px; font-weight:bold; color:#667eea">--</div></div>
             </div>
 
             <div class="wide-card">
-                <h3>情境機率分佈 (Scenario Distribution)</h3>
-                <div style="height: 250px; width: 100%;">
-                    <canvas id="scenarioChart"></canvas>
-                </div>
+                <h3 style="margin-top:0">全情境機率分佈 (按月分)</h3>
+                <div style="height: 300px;"><canvas id="scenarioChart"></canvas></div>
             </div>
 
             <div class="viz-grid">
                 <div class="viz-card">
-                    <h3 style="color:#008080">相關係數熱圖 (Teal Heat Map)</h3>
+                    <h3 style="color:#008080">相關係數熱圖 (Teal Map)</h3>
                     <div id="heatmap" style="height:350px;"></div>
                 </div>
                 <div class="viz-card">
-                    <h3 style="color:#e53935">接股風險貢獻 (Risk Analysis)</h3>
-                    <canvas id="riskChart"></canvas>
+                    <h3 style="color:#e53935">接股風險貢獻 % (Risk Analysis)</h3>
+                    <div style="height:320px;"><canvas id="riskChart"></canvas></div>
                 </div>
             </div>
         </div>
@@ -97,7 +88,7 @@ async function runWorkflow() {
     const status = document.getElementById('status');
     const tickers = document.getElementById('tickers').value.split(',').map(s => s.trim().toUpperCase());
     status.style.display = "block";
-    status.innerText = "🚀 正在抓取數據並模擬...";
+    status.innerText = "🚀 正在抓取數據與運算...";
 
     try {
         const allPrices = await Promise.all(tickers.map(t => fetchPrice(t)));
@@ -112,8 +103,7 @@ async function runWorkflow() {
 
 async function fetchPrice(ticker) {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y`;
-    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-    const res = await fetch(proxyUrl);
+    const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
     const data = await res.json();
     return data.chart.result[0].indicators.adjclose[0].adjclose.filter(p => p !== null);
 }
@@ -152,68 +142,71 @@ function analyzeData(priceSeries) {
 }
 
 function simulateFCN(analysis) {
-    const inputs = {
-        tenor: parseInt(document.getElementById('C8').value),
-        ko: parseFloat(document.getElementById('C9').value)/100,
-        ki: parseFloat(document.getElementById('C10').value)/100,
-        strike: parseFloat(document.getElementById('C11').value)/100,
-        guard: parseInt(document.getElementById('C12').value),
-        type: document.getElementById('C13').value,
-        rf: parseFloat(document.getElementById('C14').value)/100,
-        sims: parseInt(document.getElementById('C15').value),
-        cpn: parseFloat(document.getElementById('C16').value)/100
-    };
+    const tenor = parseInt(document.getElementById('C8').value);
+    const ko = parseFloat(document.getElementById('C9').value)/100;
+    const ki = parseFloat(document.getElementById('C10').value)/100;
+    const strike = parseFloat(document.getElementById('C11').value)/100;
+    const guard = parseInt(document.getElementById('C12').value);
+    const rf = parseFloat(document.getElementById('C14').value)/100;
+    const sims = parseInt(document.getElementById('C15').value);
+    const cpn = parseFloat(document.getElementById('C16').value)/100;
 
     const L = cholesky(analysis.matrix);
-    const totalDays = (21 * inputs.tenor) + 5;
-    const gDays = (21 * inputs.guard) + 4;
     const dt = 1/252;
     
     let totalPayoff = 0, kiCount = 0, totalDur = 0;
     let kiCounters = Array(analysis.nAssets).fill(0);
-    let scenarios = { "KO出場": 0, "到期還本": 0, "接股": 0 };
+    
+    // 初始化月份統計：1~Tenor 月 KO，以及最後的「到期還本」與「接股」
+    let monthlyKO = Array(tenor + 1).fill(0); 
+    let finalRedemption = 0;
+    let finalKI = 0;
 
-    for(let s=0; s<inputs.sims; s++) {
+    for(let s=0; s<sims; s++) {
         let S = Array(analysis.nAssets).fill(1.0);
         let isKO = false, wasKI = false, hasHitKO = Array(analysis.nAssets).fill(false);
-        let dayReached = totalDays;
+        let koMonth = -1;
 
-        for(let t=1; t<=totalDays; t++) {
-            let zRaw = Array.from({length: analysis.nAssets}, () => rndNormal());
-            let zCorr = Array(analysis.nAssets).fill(0);
-            for(let i=0; i<analysis.nAssets; i++) {
-                for(let j=0; j<=i; j++) zCorr[i] += L[i][j] * zRaw[j];
-                S[i] *= Math.exp((inputs.rf - 0.5 * analysis.vols[i]**2)*dt + analysis.vols[i]*Math.sqrt(dt)*zCorr[i]);
-                if(inputs.type === "A" && S[i] <= inputs.ki) wasKI = true;
+        for(let m=1; m<=tenor; m++) {
+            for(let d=1; d<=21; d++) {
+                let zRaw = Array.from({length: analysis.nAssets}, () => rndNormal());
+                let zCorr = Array(analysis.nAssets).fill(0);
+                for(let i=0; i<analysis.nAssets; i++) {
+                    for(let j=0; j<=i; j++) zCorr[i] += L[i][j] * zRaw[j];
+                    S[i] *= Math.exp((rf - 0.5 * analysis.vols[i]**2)*dt + analysis.vols[i]*Math.sqrt(dt)*zCorr[i]);
+                    if(S[i] <= ki) wasKI = true;
+                }
             }
-            if(t > gDays) {
+
+            if(m > guard) {
                 let allHit = true;
                 for(let i=0; i<analysis.nAssets; i++) {
-                    if(S[i] >= inputs.ko) hasHitKO[i] = true;
+                    if(S[i] >= ko) hasHitKO[i] = true;
                     if(!hasHitKO[i]) allHit = false;
                 }
                 if(allHit) {
-                    isKO = true; dayReached = t; scenarios["KO出場"]++;
-                    totalPayoff += 100 * (1 + (t-5)/252 * inputs.cpn) * Math.exp(-inputs.rf * t/252);
+                    isKO = true; koMonth = m;
+                    monthlyKO[m]++;
+                    totalPayoff += 100 * (1 + (m*21)/252 * cpn) * Math.exp(-rf * (m*21)/252);
                     break;
                 }
             }
         }
+
         if(!isKO) {
             let worst = Math.min(...S);
-            if(inputs.type === "E" && worst <= inputs.ki) wasKI = true;
-            if(wasKI && worst < inputs.strike) {
-                kiCount++; scenarios["接股"]++;
+            if(wasKI && worst < strike) {
+                finalKI++; kiCount++;
                 kiCounters[S.indexOf(worst)]++;
-                totalPayoff += (100*(totalDays-5)/252*inputs.cpn + 100*worst/inputs.strike) * Math.exp(-inputs.rf*totalDays/252);
+                totalPayoff += (100*(tenor*21)/252*cpn + 100*worst/strike) * Math.exp(-rf*(tenor*21)/252);
             } else {
-                scenarios["到期還本"]++;
-                totalPayoff += 100 * (1 + (totalDays-5)/252 * inputs.cpn) * Math.exp(-inputs.rf*totalDays/252);
+                finalRedemption++;
+                totalPayoff += 100 * (1 + (tenor*21)/252 * cpn) * Math.exp(-rf*(tenor*21)/252);
             }
         }
-        totalDur += dayReached;
+        totalDur += (koMonth === -1 ? tenor : koMonth);
     }
-    return { fv: totalPayoff/inputs.sims, ki: (kiCount/inputs.sims)*100, scenarios, kiCounters, sims: inputs.sims, avgDur: (totalDur/inputs.sims)/21 };
+    return { fv: totalPayoff/sims, ki: (kiCount/sims)*100, monthlyKO, finalRedemption, finalKI, sims, avgDur: totalDur/sims };
 }
 
 function cholesky(m) {
@@ -235,55 +228,48 @@ function updateUI(tickers, analysis, res) {
     document.getElementById('vDur').innerText = res.avgDur.toFixed(1);
     document.getElementById('vRet').innerText = (((res.fv-100)/Math.max(1, res.avgDur))*12).toFixed(2) + "%";
 
-    // 1. Teal Map - 顯示 Correlation
+    // 1. Teal Map
     Plotly.newPlot('heatmap', [{
         z: analysis.matrix, x: tickers, y: tickers, type: 'heatmap',
         colorscale: [[0, '#e0f2f1'], [0.5, '#4db6ac'], [1, '#008080']],
         text: analysis.matrix.map(row => row.map(v => v.toFixed(2))),
-        texttemplate: "%{text}", showscale: true
+        texttemplate: "%{text}"
     }], { margin: {t:0, b:40, l:40, r:0} });
 
-    // 2. Scenario Histogram - 橫跨全寬板塊 (維持 Bar 是直的)
+    // 2. Scenario Timeline Chart (重點修改)
     if(charts.scene) charts.scene.destroy();
+    let labels = [], data = [], colors = [];
+    for(let i=1; i<res.monthlyKO.length; i++) {
+        labels.push(`第${i}月 KO`);
+        data.push((res.monthlyKO[i]/res.sims*100).toFixed(1));
+        colors.push('#4db6ac');
+    }
+    labels.push('安全到期', '接股跌破');
+    data.push((res.finalRedemption/res.sims*100).toFixed(1), (res.finalKI/res.sims*100).toFixed(1));
+    colors.push('#1a237e', '#e53935');
+
     charts.scene = new Chart(document.getElementById('scenarioChart'), {
         type: 'bar',
-        data: {
-            labels: Object.keys(res.scenarios),
-            datasets: [{
-                label: '情境占比 %',
-                data: Object.values(res.scenarios).map(v => (v/res.sims*100).toFixed(1)),
-                backgroundColor: ['#1a237e', '#38b2ac', '#e53935'],
-                barPercentage: 0.5
-            }]
-        },
+        data: { labels: labels, datasets: [{ data: data, backgroundColor: colors }] },
         options: { 
             responsive: true, maintainAspectRatio: false,
-            scales: { y: { beginAtZero: true, title: { display: true, text: '機率 (%)' } } },
-            plugins: { legend: { display: false } }
+            plugins: { legend: { display: false } },
+            scales: { y: { ticks: { callback: v => v + '%' } } }
         }
     });
 
-    // 3. Risk Bar - 右側顯示百分比
+    // 3. Risk Bar %
     if(charts.risk) charts.risk.destroy();
-    const riskPercents = res.kiCounters.map(v => (v/res.sims*100).toFixed(2));
     charts.risk = new Chart(document.getElementById('riskChart'), {
         type: 'bar',
         data: {
             labels: tickers,
             datasets: [{
-                label: '個股接股機率 %',
-                data: riskPercents,
+                data: res.kiCounters.map(v => (v/res.sims*100).toFixed(2)),
                 backgroundColor: tickers.map(t=>t==='TSLA'?'#ed8936':'#e53935')
             }]
         },
-        options: { 
-            indexAxis: 'y',
-            plugins: { 
-                legend: { display: false },
-                // 在滑鼠移入時顯示詳細 %
-                tooltip: { callbacks: { label: (ctx) => ` 占比: ${ctx.raw}%` } }
-            }
-        }
+        options: { indexAxis: 'y', plugins: { legend: { display: false } } }
     });
 }
 </script>
