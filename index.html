@@ -11,11 +11,13 @@
         .header { background: #1a237e; color: white; padding: 15px 25px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .main-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
         .sidebar { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); height: fit-content; }
-        .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+        .content-area { display: flex; flex-direction: column; gap: 20px; }
+        .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
         .kpi-box { background: white; padding: 20px; border-radius: 15px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.03); border-top: 6px solid #1a237e; }
         
-        /* 佈局優化：Histogram 寬度佔滿 */
-        .wide-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-bottom: 20px; grid-column: span 2; }
+        /* 橫向跨全頁板塊 */
+        .wide-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); width: 100%; box-sizing: border-box; }
+        
         .viz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .viz-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); min-height: 380px; }
         
@@ -25,8 +27,6 @@
         button { width: 100%; padding: 15px; background: #1a237e; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; transition: 0.3s; }
         button:hover { background: #283593; transform: translateY(-2px); }
         #status { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 6px; display: none; }
-        table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px; }
-        th, td { padding: 8px; border-bottom: 1px solid #eee; text-align: left; }
     </style>
 </head>
 <body>
@@ -34,7 +34,7 @@
 <div class="container">
     <div class="header">
         <h2 style="margin:0">FCN 智能雲端分析儀表板</h2>
-        <span id="vTag">Stable v4.0 - Histogram Edition</span>
+        <span id="vTag">v5.0 Stable - Full Width Layout</span>
     </div>
 
     <div class="main-layout">
@@ -70,8 +70,10 @@
             </div>
 
             <div class="wide-card">
-                <h3>情境機率分佈 (Scenario Histogram)</h3>
-                <canvas id="scenarioChart" style="height:250px;"></canvas>
+                <h3>情境機率分佈 (Scenario Distribution)</h3>
+                <div style="height: 250px; width: 100%;">
+                    <canvas id="scenarioChart"></canvas>
+                </div>
             </div>
 
             <div class="viz-grid">
@@ -80,7 +82,7 @@
                     <div id="heatmap" style="height:350px;"></div>
                 </div>
                 <div class="viz-card">
-                    <h3 style="color:#e53935">接股風險貢獻 % (Risk Contribution)</h3>
+                    <h3 style="color:#e53935">接股風險貢獻 (Risk Analysis)</h3>
                     <canvas id="riskChart"></canvas>
                 </div>
             </div>
@@ -95,7 +97,7 @@ async function runWorkflow() {
     const status = document.getElementById('status');
     const tickers = document.getElementById('tickers').value.split(',').map(s => s.trim().toUpperCase());
     status.style.display = "block";
-    status.innerText = "🚀 正在處理中...";
+    status.innerText = "🚀 正在抓取數據並模擬...";
 
     try {
         const allPrices = await Promise.all(tickers.map(t => fetchPrice(t)));
@@ -116,7 +118,6 @@ async function fetchPrice(ticker) {
     return data.chart.result[0].indicators.adjclose[0].adjclose.filter(p => p !== null);
 }
 
-// 統計函式
 function getMean(arr) { return arr.reduce((a, b) => a + b, 0) / arr.length; }
 function getStd(arr) {
     const m = getMean(arr);
@@ -234,33 +235,35 @@ function updateUI(tickers, analysis, res) {
     document.getElementById('vDur').innerText = res.avgDur.toFixed(1);
     document.getElementById('vRet').innerText = (((res.fv-100)/Math.max(1, res.avgDur))*12).toFixed(2) + "%";
 
-    // 1. Teal Map - 加上 Text 顯示數值
-    const zLabels = analysis.matrix.map(row => row.map(v => v.toFixed(2)));
+    // 1. Teal Map - 顯示 Correlation
     Plotly.newPlot('heatmap', [{
         z: analysis.matrix, x: tickers, y: tickers, type: 'heatmap',
         colorscale: [[0, '#e0f2f1'], [0.5, '#4db6ac'], [1, '#008080']],
-        text: zLabels, texttemplate: "%{text}", showscale: true
+        text: analysis.matrix.map(row => row.map(v => v.toFixed(2))),
+        texttemplate: "%{text}", showscale: true
     }], { margin: {t:0, b:40, l:40, r:0} });
 
-    // 2. Scenario Histogram (Bar Chart) - 全寬度
+    // 2. Scenario Histogram - 橫跨全寬板塊 (維持 Bar 是直的)
     if(charts.scene) charts.scene.destroy();
     charts.scene = new Chart(document.getElementById('scenarioChart'), {
         type: 'bar',
         data: {
             labels: Object.keys(res.scenarios),
             datasets: [{
-                label: '情境機率 %',
+                label: '情境占比 %',
                 data: Object.values(res.scenarios).map(v => (v/res.sims*100).toFixed(1)),
-                backgroundColor: ['#1a237e', '#38b2ac', '#e53935']
+                backgroundColor: ['#1a237e', '#38b2ac', '#e53935'],
+                barPercentage: 0.5
             }]
         },
         options: { 
             responsive: true, maintainAspectRatio: false,
-            scales: { y: { beginAtZero: true, ticks: { callback: v => v + '%' } } }
+            scales: { y: { beginAtZero: true, title: { display: true, text: '機率 (%)' } } },
+            plugins: { legend: { display: false } }
         }
     });
 
-    // 3. Risk Bar + 百分比顯示
+    // 3. Risk Bar - 右側顯示百分比
     if(charts.risk) charts.risk.destroy();
     const riskPercents = res.kiCounters.map(v => (v/res.sims*100).toFixed(2));
     charts.risk = new Chart(document.getElementById('riskChart'), {
@@ -268,7 +271,7 @@ function updateUI(tickers, analysis, res) {
         data: {
             labels: tickers,
             datasets: [{
-                label: '接股機率貢獻 %',
+                label: '個股接股機率 %',
                 data: riskPercents,
                 backgroundColor: tickers.map(t=>t==='TSLA'?'#ed8936':'#e53935')
             }]
@@ -276,8 +279,9 @@ function updateUI(tickers, analysis, res) {
         options: { 
             indexAxis: 'y',
             plugins: { 
-                tooltip: { callbacks: { label: (ctx) => `貢獻度: ${ctx.raw}%` } },
-                legend: { display: false }
+                legend: { display: false },
+                // 在滑鼠移入時顯示詳細 %
+                tooltip: { callbacks: { label: (ctx) => ` 占比: ${ctx.raw}%` } }
             }
         }
     });
