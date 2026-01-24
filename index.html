@@ -7,196 +7,126 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background: #f8f9fa; margin: 0; padding: 20px; }
-        .container { max-width: 1300px; margin: auto; }
+        body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background: #f4f7f6; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1400px; margin: auto; }
         .header { background: #1a237e; color: white; padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 20px; }
-        .top-row { display: flex; gap: 20px; margin-bottom: 20px; }
-        .input-card { width: 350px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); flex-shrink: 0; }
-        .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; flex-grow: 1; }
-        .kpi-box { background: white; padding: 20px; border-radius: 15px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .kpi-value { font-size: 32px; font-weight: bold; margin-top: 10px; }
         
-        /* 視覺化區塊 */
-        .viz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
-        .viz-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); min-height: 400px; }
+        /* 佈局 */
+        .main-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
+        .sidebar { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .content-area { display: flex; flex-direction: column; gap: 20px; }
         
-        label { display: block; margin-top: 10px; font-size: 13px; font-weight: bold; }
-        input, select { width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 5px; }
-        button { width: 100%; padding: 15px; background: #1a237e; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 15px; }
-        .status { font-size: 12px; color: #d32f2f; margin-top: 10px; }
+        /* KPI 卡片 */
+        .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+        .kpi-box { background: white; padding: 20px; border-radius: 15px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.03); border-top: 6px solid #1a237e; }
+        .kpi-box.orange { border-top-color: #FF9800; }
+        .kpi-box.teal { border-top-color: #008080; }
+        .kpi-value { font-size: 28px; font-weight: bold; margin-top: 8px; }
+
+        /* 圖表區 */
+        .viz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .viz-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); min-height: 380px; }
+
+        /* 表單元素 */
+        .param-group { margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .param-group h4 { margin: 5px 0; color: #1a237e; font-size: 14px; }
+        label { display: block; margin-top: 8px; font-size: 12px; color: #666; font-weight: bold; }
+        input, select { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; background: #1a237e; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 15px; transition: 0.2s; }
+        button:hover { background: #283593; }
+        .status { font-size: 11px; color: #d32f2f; margin-top: 8px; line-height: 1.4; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header"><h1>FCN 智能全功能評價儀表板</h1></div>
+    <div class="header"><h1>FCN 智能評價系統 (全功能雲端版)</h1></div>
 
-    <div class="top-row">
-        <div class="input-card">
-            <label>股票代碼 (逗號隔開)</label>
-            <input type="text" id="tickers" value="TSLA, NVDA, AAPL">
-            <label>年化配息 (%) (C16)</label><input type="number" id="C16" value="15">
-            <label>KI 門檻 (%) (C10)</label><input type="number" id="C10" value="75">
-            <label>天期 (月) (C8)</label><input type="number" id="C8" value="12">
-            <button onclick="runAll()">一鍵執行全分析</button>
-            <div id="status" class="status"></div>
+    <div class="main-layout">
+        <div class="sidebar">
+            <div class="param-group">
+                <h4>1. 標的設定</h4>
+                <label>股票代號 (Tickers)</label>
+                <input type="text" id="tickers" value="TSLA, NVDA, AAPL">
+            </div>
+
+            <div class="param-group">
+                <h4>2. 產品條件 (C8-C14)</h4>
+                <label>天期 (月) (C8)</label><input type="number" id="C8" value="12">
+                <label>KO 門檻 (%) (C9)</label><input type="number" id="C9" value="100">
+                <label>KI 門檻 (%) (C10)</label><input type="number" id="C10" value="75">
+                <label>Strike 執行價 (%) (C11)</label><input type="number" id="C11" value="100">
+                <label>保障期 (月) (C12)</label><input type="number" id="C12" value="3">
+                <label>KI 形式 (C13)</label>
+                <select id="C13">
+                    <option value="A">美式 (全程)</option>
+                    <option value="E">歐式 (到期)</option>
+                </select>
+                <label>無風險利率 (%) (C14)</label><input type="number" id="C14" value="4.5" step="0.1">
+            </div>
+
+            <div class="param-group">
+                <h4>3. 模擬與配息 (C15-C16)</h4>
+                <label>模擬次數 (C15)</label><input type="number" id="C15" value="5000">
+                <label>年化配息 (%) (C16)</label><input type="number" id="C16" value="15">
+            </div>
+
+            <button onclick="startCalculation()">執行全分析</button>
+            <div id="status" class="status">準備就緒</div>
         </div>
 
-        <div class="kpi-grid">
-            <div class="kpi-box" style="border-top: 6px solid #1a237e;"><div>Fair Value</div><div id="vFV" class="kpi-value" style="color:#1a237e">--</div></div>
-            <div class="kpi-box" style="border-top: 6px solid #FF9800;"><div>接股總機率</div><div id="vKI" class="kpi-value" style="color:#FF9800">--</div></div>
-            <div class="kpi-box" style="border-top: 6px solid #009688;"><div>平均存續期間 (月)</div><div id="vDur" class="kpi-value" style="color:#009688">--</div></div>
-            <div class="kpi-box" style="border-top: 6px solid #673ab7;"><div>預期年化報酬</div><div id="vRet" class="kpi-value" style="color:#673ab7">--</div></div>
-        </div>
-    </div>
+        <div class="content-area">
+            <div class="kpi-row">
+                <div class="kpi-box"><div>Fair Value</div><div id="vFV" class="kpi-value" style="color:#1a237e">--</div></div>
+                <div class="kpi-box orange"><div>接股機率</div><div id="vKI" class="kpi-value" style="color:#FF9800">--</div></div>
+                <div class="kpi-box teal"><div>平均存續期 (月)</div><div id="vDur" class="kpi-value" style="color:#008080">--</div></div>
+                <div class="kpi-box"><div>預期年回報</div><div id="vRet" class="kpi-value">--</div></div>
+            </div>
 
-    <div class="viz-grid">
-        <div class="viz-card">
-            <h3 style="color:#008080">相關係數矩陣 (Teal Heat Map)</h3>
-            <div id="heatmap" style="height:350px;"></div>
-        </div>
-        <div class="viz-card">
-            <h3>情境機率分佈 (Scenario Analysis)</h3>
-            <canvas id="scenarioChart"></canvas>
-        </div>
-        <div class="viz-card">
-            <h3 style="color:#e53935">接股風險貢獻佔比 (KI Risk Contribution)</h3>
-            <canvas id="riskChart"></canvas>
-        </div>
-        <div class="viz-card">
-            <h3>蒙地卡羅模擬路徑 (範例顯示)</h3>
-            <div id="pathChart" style="height:350px;"></div>
+            <div class="viz-grid">
+                <div class="viz-card">
+                    <h3 style="color:#008080">相關係數熱圖 (Teal Heat Map)</h3>
+                    <div id="heatmap" style="height:320px;"></div>
+                </div>
+                <div class="viz-card">
+                    <h3>情境機率分佈 (Scenario)</h3>
+                    <canvas id="scenarioChart"></canvas>
+                </div>
+                <div class="viz-card">
+                    <h3 style="color:#e53935">接股風險貢獻 (Risk Contribution)</h3>
+                    <canvas id="riskChart"></canvas>
+                </div>
+                <div class="viz-card">
+                    <h3>波動率 (Historical Vol)</h3>
+                    <div id="volInfo" style="margin-top:20px;"></div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-// 圖表實例變數
 let charts = {};
 const PROXY = "https://cors-anywhere.herokuapp.com/";
 
-async function runAll() {
+async function startCalculation() {
     const log = document.getElementById('status');
     const tickers = document.getElementById('tickers').value.split(',').map(s => s.trim().toUpperCase());
-    log.innerText = "正在抓取與計算數據...";
+    log.innerText = "正在抓取資料...";
 
     try {
-        // 1. 數據分析 (抓取、Vol、Corr)
-        const allPrices = await Promise.all(tickers.map(t => fetchPrice(t)));
-        const analysis = analyzeData(allPrices);
-        
-        // 2. 執行核心模擬
-        const results = runSimulationEngine(analysis);
+        const prices = await Promise.all(tickers.map(t => fetchPrice(t)));
+        log.innerText = "正在計算矩陣與模擬...";
+        const analysis = analyzeData(prices);
+        const results = runFCNMonteCarlo(analysis);
 
-        // 3. 渲染所有圖表
-        renderHeatmap(tickers, analysis.matrix);
-        renderScenarioChart(results.scenarios);
-        renderRiskChart(tickers, results.kiCounters);
-        renderKPIs(results);
-        
-        log.innerText = "完成！";
+        updateUI(tickers, analysis, results);
+        log.innerText = "計算完成！";
     } catch (e) {
-        log.innerHTML = "錯誤：請先 <a href='https://cors-anywhere.herokuapp.com/corsdemo' target='_blank'>啟用代理</a>";
+        log.innerHTML = "錯誤！請先點此<a href='https://cors-anywhere.herokuapp.com/corsdemo' target='_blank'>啟用代理</a>";
     }
 }
 
-// --- 模擬引擎 ---
-function runSimulationEngine(analysis) {
-    // 參數讀取
-    const nSims = parseInt(document.getElementById('C15')?.value || 2000);
-    const kiPct = parseFloat(document.getElementById('C10').value) / 100;
-    const coupon = parseFloat(document.getElementById('C16').value) / 100;
-    const tenor = parseInt(document.getElementById('C8').value);
-    
-    let koCount = 0, kiTotal = 0, totalPayoff = 0;
-    let kiCounters = Array(analysis.nAssets).fill(0);
-    let scenarioCounts = { "KO出場": 0, "到期出場": 0, "接股": 0 };
-
-    // 這裡跑 Monte Carlo 運算... (包含 Cholesky 和 KO 點名邏輯)
-    // 為了範例流暢，我們簡化部分隨機邏輯，實際計算與您 VBA 一致
-    for(let s=0; s<nSims; s++) {
-        let isKO = Math.random() < 0.3; // 模擬 KO 數據
-        if(isKO) {
-            scenarioCounts["KO出場"]++;
-            totalPayoff += 102;
-        } else {
-            let isKI = Math.random() < 0.2;
-            if(isKI) {
-                scenarioCounts["接股"]++;
-                kiTotal++;
-                kiCounters[Math.floor(Math.random()*analysis.nAssets)]++;
-                totalPayoff += 85;
-            } else {
-                scenarioCounts["到期出場"]++;
-                totalPayoff += 105;
-            }
-        }
-    }
-
-    return { 
-        fv: totalPayoff / nSims, 
-        ki: (kiTotal/nSims)*100, 
-        scenarios: scenarioCounts, 
-        kiCounters: kiCounters,
-        avgDur: tenor * 0.7 
-    };
-}
-
-// --- 視覺化渲染 ---
-
-function renderHeatmap(tickers, matrix) {
-    const data = [{
-        z: matrix,
-        x: tickers,
-        y: tickers,
-        type: 'heatmap',
-        colorscale: [[0, '#e0f2f1'], [0.5, '#4db6ac'], [1, '#008080']], // 翠藍色漸變
-        showscale: true
-    }];
-    Plotly.newPlot('heatmap', data, { margin: { t: 10, b: 30, l: 50, r: 10 } });
-}
-
-function renderScenarioChart(scenarios) {
-    const ctx = document.getElementById('scenarioChart').getContext('2d');
-    if(charts.scene) charts.scene.destroy();
-    charts.scene = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: Object.keys(scenarios),
-            datasets: [{
-                data: Object.values(scenarios),
-                backgroundColor: ['#1a237e', '#4db6ac', '#e53935']
-            }]
-        },
-        options: { plugins: { legend: { position: 'bottom' } } }
-    });
-}
-
-function renderRiskChart(tickers, counters) {
-    const ctx = document.getElementById('riskChart').getContext('2d');
-    if(charts.risk) charts.risk.destroy();
-    charts.risk = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: tickers,
-            datasets: [{
-                label: '接股次數貢獻',
-                data: counters,
-                backgroundColor: tickers.map(t => t === 'TSLA' ? '#FF9800' : '#e53935')
-            }]
-        },
-        options: { indexAxis: 'y' }
-    });
-}
-
-function renderKPIs(res) {
-    document.getElementById('vFV').innerText = res.fv.toFixed(2);
-    document.getElementById('vKI').innerText = res.ki.toFixed(1) + "%";
-    document.getElementById('vDur').innerText = res.avgDur.toFixed(1);
-    document.getElementById('vRet').innerText = ((res.fv - 100) / res.avgDur * 12).toFixed(2) + "%";
-}
-
-// 數據抓取函式 (與之前一致)
 async function fetchPrice(ticker) {
     const p2 = Math.floor(Date.now() / 1000);
     const p1 = p2 - (365 * 24 * 60 * 60);
@@ -208,11 +138,127 @@ async function fetchPrice(ticker) {
 
 function analyzeData(priceSeries) {
     const n = priceSeries.length;
-    let matrix = Array.from({ length: n }, () => Array(n).fill(0));
-    for(let i=0; i<n; i++) {
-        for(let j=0; j<n; j++) matrix[i][j] = i===j ? 1 : 0.5 + (Math.random()*0.3); // 示意矩陣
+    let returns = priceSeries.map(s => {
+        let r = [];
+        for(let i=1; i<s.length; i++) r.push(Math.log(s[i]/s[i-1]));
+        return r;
+    });
+    let vols = returns.map(r => math.std(r) * Math.sqrt(252));
+    let matrix = Array.from({length:n}, (_,i) => Array.from({length:n}, (_,j) => i===j ? 1 : math.correlation(returns[i], returns[j])));
+    return { matrix, vols, nAssets: n };
+}
+
+function runFCNMonteCarlo(analysis) {
+    const C8 = parseInt(document.getElementById('C8').value); // Tenor
+    const C9 = parseFloat(document.getElementById('C9').value) / 100; // KO
+    const C10 = parseFloat(document.getElementById('C10').value) / 100; // KI
+    const C11 = parseFloat(document.getElementById('C11').value) / 100; // Strike
+    const C12 = parseInt(document.getElementById('C12').value); // Guard
+    const C13 = document.getElementById('C13').value; // KI Type
+    const C14 = parseFloat(document.getElementById('C14').value) / 100; // RiskFree
+    const C15 = parseInt(document.getElementById('C15').value); // Sims
+    const C16 = parseFloat(document.getElementById('C16').value) / 100; // Coupon
+
+    const L = cholesky(analysis.matrix);
+    const totalDays = (21 * C8) + 5;
+    const gDays = (21 * C12) + 4;
+    const dt = 1/252;
+    
+    let totalPayoff = 0, kiTotal = 0, totalDur = 0;
+    let kiCounters = Array(analysis.nAssets).fill(0);
+    let scenarioCounts = { "KO": 0, "到期": 0, "接股": 0 };
+
+    for(let s=0; s<C15; s++) {
+        let prices = Array(analysis.nAssets).fill(1.0);
+        let isKO = false, wasKI = false, hasHitKO = Array(analysis.nAssets).fill(false);
+        let dayReached = totalDays;
+
+        for(let t=1; t<=totalDays; t++) {
+            let zRaw = Array.from({length: analysis.nAssets}, () => math.randomNormal(0, 1));
+            let zCorr = Array(analysis.nAssets).fill(0);
+            for(let i=0; i<analysis.nAssets; i++) {
+                for(let j=0; j<=i; j++) zCorr[i] += L[i][j] * zRaw[j];
+                prices[i] *= Math.exp((C14 - 0.5 * analysis.vols[i]**2)*dt + analysis.vols[i]*Math.sqrt(dt)*zCorr[i]);
+                if(C13 === "A" && prices[i] <= C10) wasKI = true;
+            }
+
+            if(t > gDays) {
+                let allHit = true;
+                for(let i=0; i<analysis.nAssets; i++) {
+                    if(prices[i] >= C9) hasHitKO[i] = true;
+                    if(!hasHitKO[i]) allHit = false;
+                }
+                if(allHit) {
+                    isKO = true; dayReached = t;
+                    scenarioCounts["KO"]++;
+                    totalPayoff += 100 * (1 + (t-5)/252 * C16) * Math.exp(-C14 * t/252);
+                    break;
+                }
+            }
+        }
+
+        if(!isKO) {
+            let worst = Math.min(...prices);
+            if(C13 === "E" && worst <= C10) wasKI = true;
+            if(wasKI && worst < C11) {
+                kiTotal++; scenarioCounts["接股"]++;
+                kiCounters[prices.indexOf(worst)]++;
+                totalPayoff += (100*(totalDays-5)/252*C16 + 100*worst/C11) * Math.exp(-C14*totalDays/252);
+            } else {
+                scenarioCounts["到期"]++;
+                totalPayoff += 100 * (1 + (totalDays-5)/252 * C16) * Math.exp(-C14*totalDays/252);
+            }
+        }
+        totalDur += dayReached;
     }
-    return { matrix, nAssets: n };
+
+    return { fv: totalPayoff/C15, ki: (kiTotal/C15)*100, scenarios: scenarioCounts, kiCounters, avgDur: (totalDur/C15)/21 };
+}
+
+function cholesky(m) {
+    const n = m.length;
+    const l = Array.from({length:n},()=>Array(n).fill(0));
+    for(let i=0; i<n; i++) {
+        for(let j=0; j<=i; j++) {
+            let s = 0;
+            for(let k=0; k<j; k++) s += l[i][k] * l[j][k];
+            l[i][j] = (i===j) ? Math.sqrt(m[i][i]-s) : (m[i][j]-s)/l[j][j];
+        }
+    }
+    return l;
+}
+
+function updateUI(tickers, analysis, results) {
+    document.getElementById('vFV').innerText = results.fv.toFixed(2);
+    document.getElementById('vKI').innerText = results.ki.toFixed(1) + "%";
+    document.getElementById('vDur').innerText = results.avgDur.toFixed(1);
+    document.getElementById('vRet').innerText = (((results.fv-100)/results.avgDur)*12).toFixed(2) + "%";
+
+    // 1. Heatmap
+    Plotly.newPlot('heatmap', [{
+        z: analysis.matrix, x: tickers, y: tickers, type: 'heatmap',
+        colorscale: [[0, '#e0f2f1'], [0.5, '#4db6ac'], [1, '#008080']]
+    }], { margin: {t:0, b:40, l:40, r:0} });
+
+    // 2. Scenario
+    if(charts.scene) charts.scene.destroy();
+    charts.scene = new Chart(document.getElementById('scenarioChart'), {
+        type: 'doughnut',
+        data: { labels: Object.keys(results.scenarios), datasets: [{ data: Object.values(results.scenarios), backgroundColor: ['#1a237e', '#008080', '#e53935'] }] }
+    });
+
+    // 3. Risk
+    if(charts.risk) charts.risk.destroy();
+    charts.risk = new Chart(document.getElementById('riskChart'), {
+        type: 'bar',
+        data: { labels: tickers, datasets: [{ label: '接股次數', data: results.kiCounters, backgroundColor: tickers.map(t=>t==='TSLA'?'#FF9800':'#e53935') }] },
+        options: { indexAxis: 'y' }
+    });
+
+    // 4. Vol Info
+    let volHtml = "<table><tr><th>Ticker</th><th>Ann. Vol</th></tr>";
+    tickers.forEach((t, i) => volHtml += `<tr><td>${t}</td><td>${(analysis.vols[i]*100).toFixed(2)}%</td></tr>`);
+    document.getElementById('volInfo').innerHTML = volHtml + "</table>";
 }
 </script>
 </body>
