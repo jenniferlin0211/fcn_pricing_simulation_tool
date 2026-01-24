@@ -2,40 +2,42 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>FCN 專業全功能評價儀表板 (Auto-Fetch)</title>
+    <title>FCN 專業全功能評價儀表板</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background: #f0f2f5; margin: 0; padding: 20px; color: #1a202c; }
+        body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background: #f4f7f9; margin: 0; padding: 20px; color: #333; }
         .container { max-width: 1400px; margin: auto; }
-        .header { background: #1a237e; color: white; padding: 15px 25px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .header { background: #1a237e; color: white; padding: 15px 25px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .main-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
-        .sidebar { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); height: fit-content; }
+        .sidebar { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
-        .kpi-box { background: white; padding: 20px; border-radius: 15px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.02); border-top: 6px solid #1a237e; }
+        .kpi-box { background: white; padding: 20px; border-radius: 15px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.03); border-top: 6px solid #1a237e; }
         .viz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .viz-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.02); min-height: 350px; }
-        h4 { margin: 10px 0 5px 0; color: #2d3748; border-bottom: 1px solid #edf2f7; padding-bottom: 5px; }
-        label { display: block; margin-top: 10px; font-size: 12px; font-weight: bold; color: #4a5568; }
-        input, select { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #e2e8f0; border-radius: 6px; box-sizing: border-box; }
+        .viz-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); min-height: 380px; }
+        h4 { margin: 15px 0 5px 0; color: #1a237e; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        label { display: block; margin-top: 10px; font-size: 12px; font-weight: bold; color: #666; }
+        input, select { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
         button { width: 100%; padding: 15px; background: #1a237e; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; transition: 0.3s; }
-        button:hover { background: #2d3748; transform: translateY(-1px); }
-        #status { font-size: 12px; margin-top: 12px; padding: 10px; border-radius: 6px; background: #fffaf0; border: 1px solid #feebc8; color: #9c4221; }
+        button:hover { background: #283593; transform: translateY(-2px); }
+        #status { font-size: 12px; margin-top: 12px; padding: 10px; border-radius: 6px; background: #fff5f5; border: 1px solid #feb2b2; color: #c53030; display: none; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th, td { padding: 8px; border-bottom: 1px solid #eee; text-align: left; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header">
-        <h2 style="margin:0">FCN Cloud Analyzer</h2>
-        <span id="version">v2.0 - Auto Fetch Enabled</span>
+        <h2 style="margin:0">FCN 智能雲端分析儀表板</h2>
+        <span id="vTag">Stable v2.5 - 免授權數據源</span>
     </div>
 
     <div class="main-layout">
         <div class="sidebar">
             <h4>1. 標的設定</h4>
-            <label>股票代號 (Tickers)</label>
+            <label>股票代號 (用英文逗號隔開)</label>
             <input type="text" id="tickers" value="TSLA, NVDA, AAPL">
 
             <h4>2. 產品條件 (C8-C14)</h4>
@@ -52,23 +54,35 @@
             <label>模擬次數 (C15)</label><input type="number" id="C15" value="3000">
             <label>年化配息 (%) (C16)</label><input type="number" id="C16" value="15">
 
-            <button onclick="main()">一鍵抓取並分析</button>
-            <div id="status">準備就緒，請輸入 Tickers 後執行</div>
+            <button onclick="runWorkflow()">開始分析並模擬</button>
+            <div id="status"></div>
         </div>
 
         <div class="content-area">
             <div class="kpi-row">
-                <div class="kpi-box" style="border-color:#1a237e"><div>Fair Value</div><div id="vFV" style="font-size:32px; font-weight:bold; color:#1a237e">--</div></div>
-                <div class="kpi-box" style="border-color:#ed8936"><div>接股機率</div><div id="vKI" style="font-size:32px; font-weight:bold; color:#ed8936">--</div></div>
-                <div class="kpi-box" style="border-color:#38b2ac"><div>存續期 (月)</div><div id="vDur" style="font-size:32px; font-weight:bold; color:#38b2ac">--</div></div>
-                <div class="kpi-box" style="border-color:#667eea"><div>預期年回報</div><div id="vRet" style="font-size:32px; font-weight:bold; color:#667eea">--</div></div>
+                <div class="kpi-box"><div>Fair Value</div><div id="vFV" class="kpi-value" style="color:#1a237e">--</div></div>
+                <div class="kpi-box" style="border-top-color:#ed8936"><div>接股機率</div><div id="vKI" class="kpi-value" style="color:#ed8936">--</div></div>
+                <div class="kpi-box" style="border-top-color:#38b2ac"><div>存續期 (月)</div><div id="vDur" class="kpi-value" style="color:#38b2ac">--</div></div>
+                <div class="kpi-box" style="border-top-color:#667eea"><div>預期年回報</div><div id="vRet" class="kpi-value" style="color:#667eea">--</div></div>
             </div>
 
             <div class="viz-grid">
-                <div class="viz-card"><h3>相關係數矩陣 (Teal Heat Map)</h3><div id="heatmap" style="height:300px;"></div></div>
-                <div class="viz-card"><h3>情境分佈 (Scenario Analysis)</h3><canvas id="scenarioChart"></canvas></div>
-                <div class="viz-card"><h3>風險貢獻 (Risk Contribution)</h3><canvas id="riskChart"></canvas></div>
-                <div class="viz-card"><h3>資產波動率 (Ann. Vol)</h3><div id="volList" style="margin-top:20px"></div></div>
+                <div class="viz-card">
+                    <h3 style="color:#008080">相關係數熱圖 (Teal Heat Map)</h3>
+                    <div id="heatmap" style="height:320px;"></div>
+                </div>
+                <div class="viz-card">
+                    <h3>情境機率分佈 (Scenario)</h3>
+                    <canvas id="scenarioChart"></canvas>
+                </div>
+                <div class="viz-card">
+                    <h3 style="color:#e53935">接股風險貢獻 (Risk Contribution)</h3>
+                    <canvas id="riskChart"></canvas>
+                </div>
+                <div class="viz-card">
+                    <h3>資產波動率分析 (Ann. Vol)</h3>
+                    <div id="volTable" style="margin-top:20px"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -77,42 +91,52 @@
 <script>
 let charts = {};
 
-// --- 核心修改：使用免授權的數據代理 ---
-async function fetchPrice(ticker) {
-    // 透過一個通用的 CORS 轉接服務
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y`;
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-    
-    const res = await fetch(proxyUrl);
-    const data = await res.json();
-    const result = JSON.parse(data.contents);
-    
-    const prices = result.chart.result[0].indicators.adjclose[0].adjclose.filter(p => p !== null);
-    if (!prices || prices.length < 100) throw new Error("數據不足");
-    return prices;
-}
-
-async function main() {
+async function runWorkflow() {
     const status = document.getElementById('status');
     const tickers = document.getElementById('tickers').value.split(',').map(s => s.trim().toUpperCase());
     
-    status.innerText = "🚀 正在抓取歷史股價...";
+    status.style.display = "block";
+    status.style.background = "#ebf8ff";
+    status.style.borderColor = "#bee3f8";
+    status.style.color = "#2b6cb0";
+    status.innerText = "🚀 正在抓取 Yahoo Finance 數據...";
+
     try {
         const allPrices = await Promise.all(tickers.map(t => fetchPrice(t)));
-        status.innerText = "📊 正在計算矩陣與路徑...";
+        status.innerText = "📊 數據抓取成功，計算矩陣中...";
         
-        const analysis = analyze(allPrices);
-        const results = simulate(analysis);
+        const analysis = analyzeData(allPrices);
+        const results = simulateFCN(analysis);
         
         updateUI(tickers, analysis, results);
+        status.style.background = "#f0fff4";
+        status.style.borderColor = "#c6f6d5";
+        status.style.color = "#2f855a";
         status.innerText = "✅ 模擬完成！";
     } catch (e) {
-        status.innerText = "❌ 抓取失敗，請確認代號是否正確。";
-        console.error(e);
+        status.style.display = "block";
+        status.style.background = "#fff5f5";
+        status.style.color = "#c53030";
+        status.innerText = "❌ 錯誤: " + e.message;
     }
 }
 
-function analyze(priceSeries) {
+async function fetchPrice(ticker) {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y`;
+    // 使用目前最穩定的透明代理
+    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+    
+    const res = await fetch(proxyUrl);
+    if (!res.ok) throw new Error(`${ticker} 抓取失敗`);
+    const data = await res.json();
+    
+    if (!data.chart || !data.chart.result) throw new Error(`${ticker} 代號錯誤`);
+    const prices = data.chart.result[0].indicators.adjclose[0].adjclose.filter(p => p !== null);
+    if (prices.length < 50) throw new Error(`${ticker} 歷史數據不足`);
+    return prices;
+}
+
+function analyzeData(priceSeries) {
     const n = priceSeries.length;
     let returns = priceSeries.map(s => {
         let r = [];
@@ -125,7 +149,7 @@ function analyze(priceSeries) {
     return { matrix, vols, nAssets: n };
 }
 
-function simulate(analysis) {
+function simulateFCN(analysis) {
     const C8 = parseInt(document.getElementById('C8').value);
     const C9 = parseFloat(document.getElementById('C9').value)/100;
     const C10 = parseFloat(document.getElementById('C10').value)/100;
@@ -210,31 +234,33 @@ function updateUI(tickers, analysis, res) {
     document.getElementById('vDur').innerText = res.avgDur.toFixed(1);
     document.getElementById('vRet').innerText = (((res.fv-100)/res.avgDur)*12).toFixed(2) + "%";
 
-    // 1. Heatmap
+    // 1. Heatmap (Teal Style)
     Plotly.newPlot('heatmap', [{
         z: analysis.matrix, x: tickers, y: tickers, type: 'heatmap',
-        colorscale: [[0, '#e0f2f1'], [0.5, '#4db6ac'], [1, '#008080']]
+        colorscale: [[0, '#e0f2f1'], [0.5, '#4db6ac'], [1, '#008080']],
+        showscale: true
     }], { margin: {t:0, b:40, l:40, r:0} });
 
     // 2. Scenario Pie
     if(charts.scene) charts.scene.destroy();
     charts.scene = new Chart(document.getElementById('scenarioChart'), {
         type: 'doughnut',
-        data: { labels: Object.keys(res.scenarios), datasets: [{ data: Object.values(res.scenarios), backgroundColor: ['#1a237e', '#38b2ac', '#e53935'] }] }
+        data: { labels: Object.keys(res.scenarios), datasets: [{ data: Object.values(res.scenarios), backgroundColor: ['#1a237e', '#38b2ac', '#e53935'] }] },
+        options: { plugins: { legend: { position: 'bottom' } } }
     });
 
-    // 3. Risk Bar
+    // 3. Risk Bar (TSLA Orange)
     if(charts.risk) charts.risk.destroy();
     charts.risk = new Chart(document.getElementById('riskChart'), {
         type: 'bar',
         data: { labels: tickers, datasets: [{ label: '接股次數', data: res.kiCounters, backgroundColor: tickers.map(t=>t==='TSLA'?'#ed8936':'#e53935') }] },
-        options: { indexAxis: 'y' }
+        options: { indexAxis: 'y', plugins: { legend: { display: false } } }
     });
 
-    // 4. Vol List
-    let vHtml = "<table style='width:100%; font-size:14px;'>";
-    tickers.forEach((t, i) => vHtml += `<tr><td>${t}</td><td style='text-align:right; font-weight:bold;'>${(analysis.vols[i]*100).toFixed(2)}%</td></tr>`);
-    document.getElementById('volList').innerHTML = vHtml + "</table>";
+    // 4. Vol Table
+    let vHtml = "<table><tr><th>資產</th><th>年化波動率</th></tr>";
+    tickers.forEach((t, i) => vHtml += `<tr><td>${t}</td><td><b>${(analysis.vols[i]*100).toFixed(2)}%</b></td></tr>`);
+    document.getElementById('volTable').innerHTML = vHtml + "</table>";
 }
 </script>
 </body>
