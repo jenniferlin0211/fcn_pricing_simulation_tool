@@ -20,35 +20,48 @@
         h4 { margin: 15px 0 5px 0; color: #008080; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         label { display: block; margin-top: 10px; font-size: 12px; font-weight: bold; color: #666; }
         input, select { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; }
+        button { width: 100%; padding: 15px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; transition: background 0.3s; }
         button:hover { background: #006666; }
         #status { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 8px; display: none; background: #e6fffa; }
-        /* 確保畫布不會無限生長 */
         .chart-container { flex-grow: 1; position: relative; width: 100%; min-height: 0; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header"><h2 style="margin:0">結構型商品模擬分析 (蒙地卡羅模型)</h2></div>
+    <div class="header"><h2 style="margin:0">結構型商品模擬分析 (蒙地卡羅)</h2></div>
 
     <div class="main-layout">
         <div class="sidebar">
             <h4>1. 標的設定</h4>
             <input type="text" id="tickers" value="TSM, NVDA, TSLA">
+            
             <h4>2. 產品條件</h4>
-            <label>天期 (月)</label><input type="number" id="C8" value="12">
-            <label>KO 門檻 (%)</label><input type="number" id="C9" value="100">
-            <label>KI 門檻 (%)</label><input type="number" id="C10" value="60">
-            <label>Strike (%)</label><input type="number" id="C11" value="75">
-            <label>KO Start (月)</label><input type="number" id="C12" value="1">
+            <label>天期 (月)</label>
+            <input type="number" id="C8" value="12">
+            <label>年化配息 (%)</label>
+            <input type="number" id="C16" value="15">
+            <label>KO 門檻 (%)</label>
+            <input type="number" id="C9" value="100">
+            <label>KI 門檻 (%)</label>
+            <input type="number" id="C10" value="60">
+            <label>Strike (%)</label>
+            <input type="number" id="C11" value="75">
+            <label>KO Start (月)</label>
+            <input type="number" id="C12" value="1">
             <label>KI 形式</label>
-            <select id="C13"><option value="A">美式 (全程)</option><option value="E">歐式 (期末)</option></select>
-            <label>無風險利率 (%)</label><input type="number" id="C14" value="4.5">
+            <select id="C13">
+                <option value="A">美式 (全程)</option>
+                <option value="E">歐式 (期末)</option>
+            </select>
+            
             <h4>3. 模擬設定</h4>
-            <label>模擬次數</label><input type="number" id="idSims" value="1000">
-            <label>年化配息 (%)</label><input type="number" id="C16" value="15">
-            <button onclick="runWorkflow()">執行蒙地卡羅模型模擬</button>
+            <label>無風險利率 (%)</label>
+            <input type="number" id="C14" value="4.5">
+            <label>模擬次數</label>
+            <input type="number" id="idSims" value="1000">
+            
+            <button onclick="runWorkflow()">執行蒙地卡羅模擬</button>
             <div id="status"></div>
         </div>
 
@@ -192,7 +205,6 @@ function updateUI(tickers, analysis, res) {
     document.getElementById('vFV').innerText = (res.payoffs/sims).toFixed(2);
     document.getElementById('vDur').innerText = (res.durations/sims).toFixed(0);
 
-    // 1. Scenario Chart
     if(charts.scene) charts.scene.destroy();
     let labels = res.koCounts.map((_, i) => `情境${i+1}\n(${i===0?'1-26':(i*21+6)+'-'+((i+1)*21+5)}天)`);
     labels.push("情境13\n安全到期", "情境14\n發生接股");
@@ -212,19 +224,14 @@ function updateUI(tickers, analysis, res) {
         }
     });
 
-    // 2. Heatmap
     Plotly.newPlot('heatmap', [{
         z: analysis.matrix, x: tickers, y: tickers, type: 'heatmap',
         colorscale: [[0, '#f2fdfd'], [0.5, '#4db6ac'], [1, '#008080']],
         text: analysis.matrix.map(row => row.map(v => v.toFixed(2))), texttemplate: "%{text}"
     }], { margin: {t:0, b:40, l:40, r:0}, responsive: true });
 
-    // 3. Risk Chart (視覺修復版)
     if(charts.risk) charts.risk.destroy();
-    
-    // 計算接股機率 (KI次數 / 總模擬次數)
     const riskData = res.kiAssetCounts.map(v => (v/sims*100).toFixed(1));
-
     charts.risk = new Chart(document.getElementById('riskChart'), {
         type: 'bar',
         data: {
@@ -242,25 +249,13 @@ function updateUI(tickers, analysis, res) {
             plugins: { 
                 legend: { display: false },
                 datalabels: { 
-                    anchor: 'end', 
-                    align: 'right', 
-                    formatter: v => v + '%',
-                    font: { weight: 'bold', size: 13 },
-                    offset: 8,
-                    color: '#e53935'
+                    anchor: 'end', align: 'right', formatter: v => v + '%',
+                    font: { weight: 'bold', size: 13 }, offset: 8, color: '#e53935'
                 } 
             },
             scales: { 
-                x: { 
-                    beginAtZero: true, 
-                    max: Math.max(...riskData.map(Number)) + 20, // 留空間給標籤
-                    grid: { display: false },
-                    ticks: { display: false }
-                },
-                y: { 
-                    grid: { display: false },
-                    ticks: { font: { weight: 'bold' } }
-                }
+                x: { beginAtZero: true, max: Math.max(...riskData.map(Number)) + 20, grid: { display: false }, ticks: { display: false } },
+                y: { grid: { display: false }, ticks: { font: { weight: 'bold' } } }
             },
             layout: { padding: { right: 60, top: 20, bottom: 20 } }
         }
