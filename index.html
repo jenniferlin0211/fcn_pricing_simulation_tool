@@ -16,13 +16,15 @@
         .kpi-box { background: white; padding: 20px; border-radius: 15px; text-align: center; border-top: 6px solid #008080; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
         .wide-card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-bottom: 20px; }
         .viz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .viz-card { background: white; padding: 20px; border-radius: 15px; min-height: 420px; }
+        .viz-card { background: white; padding: 20px; border-radius: 15px; height: 420px; display: flex; flex-direction: column; }
         h4 { margin: 15px 0 5px 0; color: #008080; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         label { display: block; margin-top: 10px; font-size: 12px; font-weight: bold; color: #666; }
         input, select { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; transition: 0.3s; }
+        button { width: 100%; padding: 15px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; }
         button:hover { background: #006666; }
         #status { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 8px; display: none; background: #e6fffa; }
+        /* 確保畫布不會無限生長 */
+        .chart-container { flex-grow: 1; position: relative; width: 100%; min-height: 0; }
     </style>
 </head>
 <body>
@@ -52,7 +54,7 @@
 
         <div class="content-area">
             <div class="kpi-row">
-                <div class="kpi-box"><div>Fair Value (理論價值)</div><div id="vFV" style="font-size:32px; font-weight:bold; color:#008080">--</div></div>
+                <div class="kpi-box"><div>Fair Value (%)</div><div id="vFV" style="font-size:32px; font-weight:bold; color:#008080">--</div></div>
                 <div class="kpi-box" style="border-top-color:#38b2ac"><div>平均存續期間 (天數)</div><div id="vDur" style="font-size:32px; font-weight:bold; color:#38b2ac">--</div></div>
             </div>
 
@@ -62,8 +64,11 @@
             </div>
 
             <div class="viz-grid">
-                <div class="viz-card"><h3>相關係數矩陣</h3><div id="heatmap" style="height:350px;"></div></div>
-                <div class="viz-card"><h3>接股風險貢獻</h3><canvas id="riskChart"></canvas></div>
+                <div class="viz-card"><h3>相關係數矩陣</h3><div id="heatmap" style="flex-grow:1;"></div></div>
+                <div class="viz-card">
+                    <h3>接股風險貢獻</h3>
+                    <div class="chart-container"><canvas id="riskChart"></canvas></div>
+                </div>
             </div>
         </div>
     </div>
@@ -212,34 +217,52 @@ function updateUI(tickers, analysis, res) {
         z: analysis.matrix, x: tickers, y: tickers, type: 'heatmap',
         colorscale: [[0, '#f2fdfd'], [0.5, '#4db6ac'], [1, '#008080']],
         text: analysis.matrix.map(row => row.map(v => v.toFixed(2))), texttemplate: "%{text}"
-    }], { margin: {t:0, b:40, l:40, r:0} });
+    }], { margin: {t:0, b:40, l:40, r:0}, responsive: true });
 
-    // 3. Risk Chart (修正標籤到右側)
+    // 3. Risk Chart (視覺修復版)
     if(charts.risk) charts.risk.destroy();
+    
+    // 計算接股機率 (KI次數 / 總模擬次數)
+    const riskData = res.kiAssetCounts.map(v => (v/sims*100).toFixed(1));
+
     charts.risk = new Chart(document.getElementById('riskChart'), {
         type: 'bar',
         data: {
             labels: tickers,
-            datasets: [{ data: res.kiAssetCounts.map(v => (v/sims*100).toFixed(1)), backgroundColor: '#e53935' }]
+            datasets: [{
+                data: riskData,
+                backgroundColor: '#e53935',
+                barThickness: 30
+            }]
         },
         options: { 
             indexAxis: 'y',
-            responsive: true, maintainAspectRatio: false,
+            responsive: true,
+            maintainAspectRatio: false,
             plugins: { 
                 legend: { display: false },
                 datalabels: { 
                     anchor: 'end', 
                     align: 'right', 
                     formatter: v => v + '%',
-                    font: { weight: 'bold', size: 12 },
-                    offset: 5
+                    font: { weight: 'bold', size: 13 },
+                    offset: 8,
+                    color: '#e53935'
                 } 
             },
             scales: { 
-                x: { beginAtZero: true, max: Math.max(...res.kiAssetCounts.map(v => v/sims*100)) + 15, grid: { display: false } },
-                y: { grid: { display: false } }
+                x: { 
+                    beginAtZero: true, 
+                    max: Math.max(...riskData.map(Number)) + 20, // 留空間給標籤
+                    grid: { display: false },
+                    ticks: { display: false }
+                },
+                y: { 
+                    grid: { display: false },
+                    ticks: { font: { weight: 'bold' } }
+                }
             },
-            layout: { padding: { right: 50 } }
+            layout: { padding: { right: 60, top: 20, bottom: 20 } }
         }
     });
 }
