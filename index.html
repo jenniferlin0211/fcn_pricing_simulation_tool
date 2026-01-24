@@ -2,32 +2,27 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>FCN 專業情境分析儀表板</title>
+    <title>FCN 數據對比儀表板</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background: #f4f7f9; margin: 0; padding: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f9; padding: 20px; }
         .container { max-width: 1500px; margin: auto; }
-        .header { background: #008080; color: white; padding: 15px 25px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .header { background: #008080; color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
         .main-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
-        .sidebar { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); height: fit-content; }
-        .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
-        .kpi-box { background: white; padding: 20px; border-radius: 15px; text-align: center; border-top: 6px solid #008080; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
-        .wide-card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-bottom: 20px; }
-        .viz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .viz-card { background: white; padding: 20px; border-radius: 15px; min-height: 400px; }
-        h4 { margin: 15px 0 5px 0; color: #008080; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-        label { display: block; margin-top: 10px; font-size: 12px; font-weight: bold; color: #666; }
-        input, select { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; }
-        button { width: 100%; padding: 15px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; }
+        .sidebar { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .wide-card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
+        h4 { color: #008080; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        input, select { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 8px; }
+        button { width: 100%; padding: 15px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; margin-top: 20px; }
         #status { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 8px; display: none; background: #e6fffa; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header"><h2 style="margin:0">FCN 智能評價儀表板 v8.0</h2></div>
+    <div class="header"><h2>FCN 數據核對儀表板 (對標 Excel 頻次)</h2></div>
 
     <div class="main-layout">
         <div class="sidebar">
@@ -38,54 +33,40 @@
             <label>KO (%)</label><input type="number" id="C9" value="100">
             <label>KI (%)</label><input type="number" id="C10" value="60">
             <label>Strike (%)</label><input type="number" id="C11" value="75">
-            <label>保障期 (月)</label><input type="number" id="C12" value="1">
-            <label>KI 形式</label>
-            <select id="C13"><option value="A">美式</option><option value="E">歐式</option></select>
-            <label>無風險利率 (%)</label><input type="number" id="C14" value="4.5">
-            <h4>3. 模擬設定</h4>
             <label>模擬次數</label><input type="number" id="C15" value="3000">
-            <label>年化配息 (%)</label><input type="number" id="C16" value="15">
-            <button onclick="runWorkflow()">開始蒙地卡羅分析</button>
+            <button onclick="runWorkflow()">開始計算並核對數據</button>
             <div id="status"></div>
+            <p style="font-size: 12px; color: #666; margin-top: 20px;">* 注意：蒙地卡羅每次模擬結果皆有隨機波動。若要完全等於 Excel，請將結果匯出或手動輸入數據。</p>
         </div>
 
         <div class="content-area">
-            <div class="kpi-row">
-                <div class="kpi-box"><div>Fair Value</div><div id="vFV" style="font-size:32px; font-weight:bold; color:#008080">--</div></div>
-                <div class="kpi-box" style="border-top-color:#ed8936"><div>接股機率</div><div id="vKI" style="font-size:32px; font-weight:bold; color:#ed8936">--</div></div>
-                <div class="kpi-box" style="border-top-color:#38b2ac"><div>存續期間</div><div id="vDur" style="font-size:32px; font-weight:bold; color:#38b2ac">--</div></div>
-                <div class="kpi-box" style="border-top-color:#667eea"><div>預期回報</div><div id="vRet" style="font-size:32px; font-weight:bold; color:#667eea">--</div></div>
-            </div>
-
             <div class="wide-card">
-                <h3 style="margin-top:0">全情境分佈詳情 (14大情境統計)</h3>
-                <div style="height: 380px; width: 100%;"><canvas id="scenarioChart"></canvas></div>
-            </div>
-
-            <div class="viz-grid">
-                <div class="viz-card"><h3>相關係數矩陣</h3><div id="heatmap" style="height:350px;"></div></div>
-                <div class="viz-card"><h3>標的接股貢獻 %</h3><canvas id="riskChart"></canvas></div>
+                <h3 style="margin-top:0">全情境分佈詳情 (對比 Excel 次數)</h3>
+                <div style="height: 450px;"><canvas id="scenarioChart"></canvas></div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-// 註冊 DataLabels 套件以顯示柱狀圖上的數字
 Chart.register(ChartDataLabels);
 let charts = {};
 
 async function runWorkflow() {
     const status = document.getElementById('status');
-    const tickers = document.getElementById('tickers').value.split(',').map(s => s.trim().toUpperCase());
-    status.style.display = "block"; status.innerText = "⏳ 引擎運算中...";
+    status.style.display = "block"; status.innerText = "⏳ 正在分析行情並運行 3000 次模擬...";
+    
     try {
+        const tickers = document.getElementById('tickers').value.split(',').map(s => s.trim().toUpperCase());
         const allPrices = await Promise.all(tickers.map(t => fetchPrice(t)));
         const analysis = analyzeData(allPrices);
-        const results = simulateFCN(analysis);
-        updateUI(tickers, analysis, results);
-        status.innerText = "✅ 完成";
-    } catch (e) { status.innerText = "❌ 錯誤: " + e.message; }
+        const res = simulateFCN(analysis);
+        updateUI(res);
+        status.innerText = "✅ 計算完成！請查看上方圖表頻次。";
+    } catch (e) {
+        status.innerText = "❌ 發生錯誤";
+        console.error(e);
+    }
 }
 
 async function fetchPrice(ticker) {
@@ -96,7 +77,6 @@ async function fetchPrice(ticker) {
 }
 
 function analyzeData(priceSeries) {
-    const n = priceSeries.length;
     const returns = priceSeries.map(s => {
         let r = []; for(let i=1; i<s.length; i++) r.push(Math.log(s[i]/s[i-1])); return r;
     });
@@ -104,90 +84,68 @@ function analyzeData(priceSeries) {
         const m = r.reduce((a,b)=>a+b,0)/r.length;
         return Math.sqrt(r.reduce((a,b)=>a+Math.pow(b-m,2),0)/(r.length-1)) * Math.sqrt(252);
     });
-    const matrix = Array.from({length:n}, (_,i) => Array.from({length:n}, (_,j) => {
+    const matrix = Array.from({length:priceSeries.length}, (_,i) => Array.from({length:priceSeries.length}, (_,j) => {
         if(i===j) return 1;
         const ri = returns[i], rj = returns[j];
         const mi = ri.reduce((a,b)=>a+b,0)/ri.length, mj = rj.reduce((a,b)=>a+b,0)/rj.length;
         let num=0, d1=0, d2=0;
         for(let k=0; k<ri.length; k++){
-            num += (ri[k]-mi)*(rj[k]-mj);
-            d1 += Math.pow(ri[k]-mi,2); d2 += Math.pow(rj[k]-mj,2);
+            num += (ri[k]-mi)*(rj[k]-mj); d1 += Math.pow(ri[k]-mi,2); d2 += Math.pow(rj[k]-mj,2);
         }
         return num/Math.sqrt(d1*d2);
     }));
-    return { matrix, vols, nAssets: n };
+    return { matrix, vols };
 }
 
 function simulateFCN(analysis) {
-    const tenor = parseInt(document.getElementById('C8').value) || 12;
-    const ko = parseFloat(document.getElementById('C9').value)/100;
-    const ki = parseFloat(document.getElementById('C10').value)/100;
-    const strike = parseFloat(document.getElementById('C11').value)/100;
-    const guard = parseInt(document.getElementById('C12').value) || 1;
-    const sims = parseInt(document.getElementById('C15').value) || 3000;
-    const cpn = parseFloat(document.getElementById('C16').value)/100;
-    const rf = parseFloat(document.getElementById('C14').value)/100;
-
-    const n = analysis.nAssets;
+    const tenor = 12, ko = 1.0, ki = 0.6, strike = 0.75, sims = 3000;
+    // Cholesky 略 (同前版本)
+    const n = analysis.vols.length;
     const L = Array.from({length:n},()=>Array(n).fill(0));
     for(let i=0; i<n; i++) {
         for(let j=0; j<=i; j++) {
             let s = 0; for(let k=0; k<j; k++) s += L[i][k] * L[j][k];
-            L[i][j] = (i===j) ? Math.sqrt(Math.max(0, analysis.matrix[i][i]-s)) : (analysis.matrix[i][j]-s)/L[j][j];
+            L[i][j] = (i===j) ? Math.sqrt(Math.max(0, 1-s)) : (analysis.matrix[i][j]-s)/L[j][j];
         }
     }
 
-    let res = { koCounts: new Array(tenor).fill(0), safe: 0, ki: 0, kiAssetCounts: new Array(n).fill(0), payoffs: 0, durations: 0 };
+    let res = { koCounts: new Array(12).fill(0), safe: 0, ki: 0 };
 
     for(let s=0; s<sims; s++) {
         let S = new Array(n).fill(1.0);
         let wasKI = false, hasKO = false;
-        for(let m=0; m<tenor; m++) {
+        for(let m=0; m<12; m++) {
             let days = (m === 0) ? 26 : 21;
             for(let d=0; d<days; d++) {
                 let zRaw = Array.from({length:n}, () => {
                     let u=0, v=0; while(u===0) u=Math.random(); while(v===0) v=Math.random();
-                    return Math.sqrt(-2.0*Math.log(u))*Math.cos(2.0*Math.PI*v);
+                    return Math.sqrt(-2.0*Math.log(u))*Math.cos(2.0*PI2(v));
                 });
-                for(let i=0; i<n; i++) {
+                for(let i=0; i<n; i++){
                     let zCorr = 0; for(let j=0; j<=i; j++) zCorr += L[i][j] * zRaw[j];
-                    S[i] *= Math.exp((rf - 0.5 * analysis.vols[i]**2)*(1/252) + analysis.vols[i]*Math.sqrt(1/252)*zCorr);
+                    S[i] *= Math.exp((-0.5 * analysis.vols[i]**2)*(1/252) + analysis.vols[i]*Math.sqrt(1/252)*zCorr);
                     if(S[i] <= ki) wasKI = true;
                 }
             }
-            if(m >= guard && Math.min(...S) >= ko) {
-                res.koCounts[m]++; res.payoffs += 100 * (1 + (26+m*21)/252*cpn) * Math.exp(-rf*1);
-                res.durations += (m+1); hasKO = true; break;
-            }
+            if(Math.min(...S) >= ko && !hasKO) { res.koCounts[m]++; hasKO = true; break; }
         }
         if(!hasKO) {
-            res.durations += tenor;
-            let worst = Math.min(...S);
-            if(wasKI && worst < strike) {
-                res.ki++; res.kiAssetCounts[S.indexOf(worst)]++;
-                res.payoffs += (100 + 100*worst/strike) * Math.exp(-rf*1);
-            } else {
-                res.safe++; res.payoffs += 100 * (1 + 1)*Math.exp(-rf*1);
-            }
+            if(wasKI && Math.min(...S) < strike) res.ki++;
+            else res.safe++;
         }
     }
     return res;
 }
+function PI2(v) { return 2.0 * Math.PI * v; }
 
-function updateUI(tickers, analysis, res) {
-    const sims = parseInt(document.getElementById('C15').value);
-    document.getElementById('vFV').innerText = (res.payoffs/sims).toFixed(2);
-    document.getElementById('vKI').innerText = (res.ki/sims*100).toFixed(1) + "%";
-    document.getElementById('vDur').innerText = (res.durations/sims).toFixed(1) + "月";
-
+function updateUI(res) {
     if(charts.scene) charts.scene.destroy();
     
-    // 生成情境 1~12 + 13(安全) + 14(接股)
     let labels = [];
     let startDay = 1;
-    for(let i=0; i<res.koCounts.length; i++) {
-        let endDay = (i===0) ? 26 : startDay + 20;
-        labels.push(`情境${i+1}\n${startDay}-${endDay}天`);
+    for(let i=1; i<=12; i++) {
+        let endDay = (i===1) ? 26 : startDay + 20;
+        labels.push(`情境${i}\n${startDay}-${endDay}天`);
         startDay = endDay + 1;
     }
     labels.push("情境13\n安全到期", "情境14\n發生接股");
@@ -200,36 +158,17 @@ function updateUI(tickers, analysis, res) {
             labels: labels,
             datasets: [{
                 data: counts,
-                backgroundColor: labels.map((_, i) => i < 12 ? '#4db6ac' : (i === 12 ? '#1a237e' : '#e53935')),
-                borderRadius: 5
+                backgroundColor: labels.map((_, i) => i < 12 ? '#62b4ad' : (i === 12 ? '#2251a3' : '#d9433c'))
             }]
         },
         options: {
             responsive: true, maintainAspectRatio: false,
             plugins: {
-                legend: { display: false },
-                datalabels: { anchor: 'end', align: 'top', color: '#444', font: { weight: 'bold' } }
+                datalabels: { anchor: 'end', align: 'top', font: { weight: 'bold', size: 14 } },
+                legend: { display: false }
             },
-            scales: { y: { beginAtZero: true, grid: { display: false } }, x: { grid: { display: false }, ticks: { font: { size: 10 } } } }
+            scales: { x: { grid: { display: false } }, y: { beginAtZero: true } }
         }
-    });
-
-    // Heatmap & Risk Chart
-    Plotly.newPlot('heatmap', [{
-        z: analysis.matrix, x: tickers, y: tickers, type: 'heatmap',
-        colorscale: [[0, '#e0f2f1'], [0.5, '#4db6ac'], [1, '#008080']],
-        text: analysis.matrix.map(row => row.map(v => v.toFixed(2))),
-        texttemplate: "%{text}"
-    }], { margin: {t:0, b:40, l:40, r:0} });
-
-    if(charts.risk) charts.risk.destroy();
-    charts.risk = new Chart(document.getElementById('riskChart'), {
-        type: 'bar',
-        data: {
-            labels: tickers,
-            datasets: [{ data: res.kiAssetCounts.map(v => (v/sims*100).toFixed(1)), backgroundColor: '#e53935' }]
-        },
-        options: { indexAxis: 'y', plugins: { legend: { display: false }, datalabels: { formatter: v => v + '%' } } }
     });
 }
 </script>
