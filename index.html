@@ -7,20 +7,20 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background: #f4f7f9; margin: 0; padding: 20px; }
+        body { font-family: -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif; background: #f4f7f9; margin: 0; padding: 20px; }
         .container { max-width: 1500px; margin: auto; }
-        .header { background: #008080; color: white; padding: 15px 25px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .header { background: #008080; color: white; padding: 15px 25px; border-radius: 12px; margin-bottom: 20px; text-align: center; }
         .main-layout { display: grid; grid-template-columns: 1fr; gap: 20px; }
         @media (min-width: 992px) { .main-layout { grid-template-columns: 320px 1fr; } }
         .sidebar { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .kpi-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px; }
+        .kpi-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
         .kpi-box { background: white; padding: 20px; border-radius: 15px; text-align: center; border-top: 6px solid #008080; }
         .wide-card { background: white; padding: 25px; border-radius: 15px; margin-bottom: 20px; }
         label { display: block; margin-top: 10px; font-size: 12px; font-weight: bold; color: #666; }
-        input, select { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        button { width: 100%; padding: 15px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; }
+        input, select { width: 100%; padding: 12px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 18px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 18px; font-weight: bold; margin-top: 20px; }
         button:disabled { background: #ccc; }
-        #status { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 8px; display: none; background: #e6fffa; color: #004d4d; border: 1px solid #b2f5ea; }
+        #status { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 8px; display: none; background: #fffbe6; color: #856404; border: 1px solid #ffeeba; white-space: pre-wrap; }
     </style>
 </head>
 <body>
@@ -43,7 +43,7 @@
             <h4>3. 模擬設定</h4>
             <label>無風險利率 (%)</label><input type="number" id="C14" value="4.5">
             <label>模擬次數</label><input type="number" id="idSims" value="1000">
-            <button id="runBtn" onclick="runWorkflow()">點擊開始模擬</button>
+            <button id="runBtn" onclick="runWorkflow()">點擊執行模擬</button>
             <div id="status"></div>
         </div>
         <div class="content-area">
@@ -60,37 +60,33 @@
 <script>
 let charts = {};
 
-// ✅ 終極修正：Yahoo 查詢節點備援與動態解析
+// ✅ 終極連線修正：多重動態解析
 async function fetchPrice(ticker) {
-    const ts = Date.now();
-    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y&nocache=${ts}`;
-    
-    // 三個不同類型的公共中繼
+    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y`;
+    // 使用目前已知最底層的代理嘗試
     const proxies = [
+        `https://thingproxy.freeboard.io/fetch/${yahooUrl}`,
         `https://api.allorigins.win/get?url=${encodeURIComponent(yahooUrl)}`,
-        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(yahooUrl)}`,
         `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`
     ];
 
+    let lastError = "";
     for (let proxy of proxies) {
         try {
             const res = await fetch(proxy);
             if (res.ok) {
                 const raw = await res.json();
-                // 處理 AllOrigins 獨有的 contents 包裝
                 let data = raw.contents ? JSON.parse(raw.contents) : raw;
-                
                 if (data.chart && data.chart.result) {
-                    const adjClose = data.chart.result[0].indicators.adjclose[0].adjclose;
-                    const cleanPrices = adjClose.filter(p => p !== null);
-                    if (cleanPrices.length > 0) return cleanPrices;
+                    return data.chart.result[0].indicators.adjclose[0].adjclose.filter(p => p !== null);
                 }
             }
         } catch (e) {
-            console.error(`Proxy ${proxy} failed, trying next...`);
+            lastError = e.message;
+            continue;
         }
     }
-    throw new Error(`${ticker} 抓取失敗。這通常是您的 Wi-Fi 或 5G 阻擋了數據通道。`);
+    throw new Error(`${ticker} 無法連線至金融伺服器。建議切換 Wi-Fi 或行動網路。`);
 }
 
 async function runWorkflow() {
@@ -100,27 +96,24 @@ async function runWorkflow() {
     
     btn.disabled = true;
     status.style.display = "block";
-    status.innerText = "⏳ 正在嘗試多重連線抓取數據...";
+    status.innerText = "⏳ 正在跨越網路障礙獲取數據...";
 
     try {
         const allPrices = await Promise.all(tickers.map(t => fetchPrice(t)));
-        status.innerText = "⏳ 數據成功下載，模擬計算中...";
-        
+        status.innerText = "⏳ 下載成功，進行蒙地卡羅運算...";
         const analysis = analyzeData(allPrices);
         const results = simulateFCN(analysis);
         updateUI(tickers, analysis, results);
-        
         status.innerText = "✅ 模擬完成";
     } catch (e) {
-        status.style.background = "#fff5f5";
-        status.innerText = "❌ 錯誤: " + e.message;
+        status.innerText = "❌ " + e.message;
         alert(e.message);
     } finally {
         btn.disabled = false;
     }
 }
 
-// ⚠️ 以下 VBA 式多行結構與 FCN 邏輯 100% 保持原樣
+// ⚠️ 以下 VBA 結構與邏輯 100% 保持
 function analyzeData(priceSeries) {
     const n = priceSeries.length;
     const returns = priceSeries.map(s => {
