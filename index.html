@@ -9,7 +9,7 @@
         body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background: #f4f7f9; margin: 0; padding: 20px; }
         .container { max-width: 1500px; margin: auto; }
         .header { background: #008080; color: white; padding: 15px 25px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .main-layout { display: grid; grid-template-columns: 380px 1fr; gap: 20px; }
+        .main-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
         .sidebar { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         .kpi-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px; }
         .kpi-box { background: white; padding: 20px; border-radius: 15px; text-align: center; border-top: 6px solid #008080; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
@@ -17,12 +17,12 @@
         .viz-card { background: white; padding: 20px; border-radius: 15px; height: 420px; display: flex; flex-direction: column; }
         h4 { margin: 15px 0 5px 0; color: #008080; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         label { display: block; margin-top: 10px; font-size: 12px; font-weight: bold; color: #666; }
-        input, select, textarea { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        textarea { height: 80px; font-family: monospace; font-size: 11px; resize: vertical; }
-        button { width: 100%; padding: 15px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; }
+        input, select { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; transition: 0.3s; }
         button:hover { background: #006666; }
-        #status { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 8px; display: none; background: #e6fffa; }
-        .chart-container { flex-grow: 1; position: relative; width: 100%; min-height: 0; }
+        #status { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 8px; display: none; line-height: 1.5; }
+        .error-msg { background: #fff5f5; border: 1px solid #feb2b2; color: #c53030; }
+        .success-msg { background: #e6fffa; border: 1px solid #b2f5ea; color: #2c7a7b; }
     </style>
 </head>
 <body>
@@ -32,36 +32,33 @@
 
     <div class="main-layout">
         <div class="sidebar">
-            <h4>1. 數據貼入 (從 Excel 複製一整列價格)</h4>
-            <div id="dataInputs">
-                <label>標的 1 (如 NVDA)</label>
-                <input type="text" id="t1" value="NVDA">
-                <textarea id="p1" placeholder="貼入 Excel 價格序列..."></textarea>
-                
-                <label>標的 2 (如 TSM)</label>
-                <input type="text" id="t2" value="TSM">
-                <textarea id="p2" placeholder="貼入 Excel 價格序列..."></textarea>
-                
-                <label>標的 3 (如 TSLA)</label>
-                <input type="text" id="t3" value="TSLA">
-                <textarea id="p3" placeholder="貼入 Excel 價格序列..."></textarea>
-            </div>
-
+            <h4>1. 標的設定</h4>
+            <input type="text" id="tickers" value="TSM.US, NVDA.US, TSLA.US">
+            <p style="font-size:11px; color:#999; margin-top:4px;">(美股加 .US / 台股加 .TW)</p>
+            
             <h4>2. 產品條件</h4>
-            <label>天期 (月)</label><input type="number" id="C8" value="12">
-            <label>年化配息 (%)</label><input type="number" id="C16" value="15">
-            <label>KO 門檻 (%)</label><input type="number" id="C9" value="100">
-            <label>KI 門檻 (%)</label><input type="number" id="C10" value="60">
-            <label>Strike (%)</label><input type="number" id="C11" value="75">
-            <label>KO Start (月)</label><input type="number" id="C12" value="1">
+            <label>天期 (月)</label>
+            <input type="number" id="C8" value="12">
+            <label>年化配息 (%)</label>
+            <input type="number" id="C16" value="15">
+            <label>KO 門檻 (%)</label>
+            <input type="number" id="C9" value="100">
+            <label>KI 門檻 (%)</label>
+            <input type="number" id="C10" value="60">
+            <label>Strike (%)</label>
+            <input type="number" id="C11" value="75">
+            <label>KO Start (月)</label>
+            <input type="number" id="C12" value="1">
             <label>KI 形式</label>
             <select id="C13"><option value="A">美式 (全程)</option><option value="E">歐式 (期末)</option></select>
             
             <h4>3. 模擬設定</h4>
-            <label>無風險利率 (%)</label><input type="number" id="C14" value="4.5">
-            <label>模擬次數</label><input type="number" id="idSims" value="1000">
+            <label>無風險利率 (%)</label>
+            <input type="number" id="C14" value="4.5">
+            <label>模擬次數</label>
+            <input type="number" id="idSims" value="1000">
             
-            <button onclick="runLocalSimulation()">執行蒙地卡羅模擬</button>
+            <button onclick="runWorkflow()">執行蒙地卡羅模擬</button>
             <div id="status"></div>
         </div>
 
@@ -70,15 +67,13 @@
                 <div class="kpi-box"><div>Fair Value (%)</div><div id="vFV" style="font-size:32px; font-weight:bold; color:#008080">--</div></div>
                 <div class="kpi-box" style="border-top-color:#38b2ac"><div>平均存續期間 (天數)</div><div id="vDur" style="font-size:32px; font-weight:bold; color:#38b2ac">--</div></div>
             </div>
-
             <div class="wide-card">
                 <h3 style="margin-top:0">情境分佈詳情</h3>
                 <div style="height: 380px;"><canvas id="scenarioChart"></canvas></div>
             </div>
-
             <div class="viz-card">
                 <h3>接股風險貢獻</h3>
-                <div class="chart-container"><canvas id="riskChart"></canvas></div>
+                <div style="flex-grow:1;"><canvas id="riskChart"></canvas></div>
             </div>
         </div>
     </div>
@@ -88,37 +83,69 @@
 Chart.register(ChartDataLabels);
 let charts = {};
 
-function parsePrices(text) {
-    return text.trim().split(/[\s,]+/).map(Number).filter(n => !isNaN(n) && n > 0);
-}
+async function fetchPrice(ticker) {
+    // 嘗試使用不同的公開 Proxy 以穿透公司防火牆
+    const proxies = [
+        "https://api.allorigins.win/get?url=",
+        "https://corsproxy.io/?",
+        "https://thingproxy.freeboard.io/fetch/"
+    ];
+    
+    const targetUrl = `https://stooq.com/q/d/l/?s=${ticker}&i=d`;
+    let lastError = "";
 
-function runLocalSimulation() {
-    const status = document.getElementById('status');
-    status.style.display = "block"; status.innerText = "⏳ 正在計算統計量並模擬...";
-
-    setTimeout(() => {
+    for (let proxy of proxies) {
         try {
-            const p1 = parsePrices(document.getElementById('p1').value);
-            const p2 = parsePrices(document.getElementById('p2').value);
-            const p3 = parsePrices(document.getElementById('p3').value);
-            const tickers = [document.getElementById('t1').value, document.getElementById('t2').value, document.getElementById('t3').value];
+            const fetchUrl = proxy.includes('allorigins') ? proxy + encodeURIComponent(targetUrl) : proxy + targetUrl;
+            const response = await fetch(fetchUrl);
+            if (!response.ok) continue;
+            
+            let data;
+            if (proxy.includes('allorigins')) {
+                const json = await response.json();
+                data = json.contents;
+            } else {
+                data = await response.text();
+            }
 
-            if (p1.length < 5 || p2.length < 5 || p3.length < 5) throw new Error("請確保每個標的都貼入了足夠的價格數據");
-
-            const analysis = calculateMarketStats([p1, p2, p3]);
-            const results = performMonteCarlo(analysis);
-            updateUI(tickers, results);
-            status.innerText = "✅ 計算完成";
+            const rows = data.trim().split('\n').slice(1);
+            const prices = rows.map(r => parseFloat(r.split(',')[4])).filter(p => !isNaN(p));
+            if (prices.length > 0) return prices.reverse().slice(0, 252);
         } catch (e) {
-            status.style.background = "#fff5f5";
-            status.innerText = "❌ 錯誤: " + e.message;
+            lastError = e.message;
+            continue;
         }
-    }, 50);
+    }
+    throw new Error("所有連線通道均被封鎖。請檢查網管權限。");
 }
 
-function calculateMarketStats(priceSeries) {
-    const n = priceSeries.length;
-    const returns = priceSeries.map(s => {
+async function runWorkflow() {
+    const status = document.getElementById('status');
+    const tickers = document.getElementById('tickers').value.split(',').map(s => s.trim().toUpperCase());
+    
+    status.className = "success-msg";
+    status.style.display = "block";
+    status.innerText = "⏳ 正在嘗試多重通道連線數據源...";
+
+    try {
+        const allPrices = await Promise.all(tickers.map(t => fetchPrice(t)));
+        status.innerText = "✅ 數據獲取成功，開始計算...";
+        
+        const analysis = analyzeData(allPrices);
+        const results = simulateFCN(analysis);
+        updateUI(tickers, results);
+        
+        status.innerText = "✅ 模擬完成";
+    } catch (e) {
+        status.className = "error-msg";
+        status.innerHTML = `❌ <b>連線失敗 (Fail to fetch)</b><br>原因：公司網管阻擋了外部數據請求。<br><br>請嘗試在瀏覽器新分頁開啟此連結以「解鎖」代理伺服器：<br><a href="https://corsproxy.io/" target="_blank">點此解鎖 Proxy 通道</a>`;
+    }
+}
+
+// 數據分析邏輯
+function analyzeData(series) {
+    const n = series.length;
+    const returns = series.map(s => {
         let r = []; for(let i=1; i<s.length; i++) r.push(Math.log(s[i]/s[i-1])); return r;
     });
     const vols = returns.map(r => {
@@ -139,16 +166,17 @@ function calculateMarketStats(priceSeries) {
     return { matrix, vols, nAssets: n };
 }
 
-function performMonteCarlo(analysis) {
+// 模擬邏輯 (依據您的 VBA 要求)
+function simulateFCN(analysis) {
     const tenor = parseInt(document.getElementById('C8').value);
     const cpn = parseFloat(document.getElementById('C16').value)/100;
     const ko = parseFloat(document.getElementById('C9').value)/100;
     const ki = parseFloat(document.getElementById('C10').value)/100;
     const strike = parseFloat(document.getElementById('C11').value)/100;
-    const gStart = parseInt(document.getElementById('C12').value);
-    const kiType = document.getElementById('C13').value;
     const rf = parseFloat(document.getElementById('C14').value)/100;
     const sims = parseInt(document.getElementById('idSims').value);
+    const gStart = parseInt(document.getElementById('C12').value);
+    const kiType = document.getElementById('C13').value;
 
     const n = analysis.nAssets;
     const L = Array.from({length:n},()=>Array(n).fill(0));
@@ -215,29 +243,20 @@ function updateUI(tickers, res) {
     charts.scene = new Chart(document.getElementById('scenarioChart'), {
         type: 'bar',
         data: {
-            labels: [...res.koCounts.map((_, i) => `情境${i+1}`), "安全到期", "發生接股"],
+            labels: [...res.koCounts.map((_, i) => `情境${i+1}`), "安全", "接股"],
             datasets: [{ data: [...res.koCounts, res.safe, res.ki], backgroundColor: '#4db6ac' }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        options: { responsive: true, maintainAspectRatio: false }
     });
 
     if(charts.risk) charts.risk.destroy();
-    const riskData = res.kiAssetCounts.map(v => (v/sims*100).toFixed(1));
     charts.risk = new Chart(document.getElementById('riskChart'), {
         type: 'bar',
         data: {
             labels: tickers,
-            datasets: [{ data: riskData, backgroundColor: '#e53935', barThickness: 30 }]
+            datasets: [{ data: res.kiAssetCounts.map(v => (v/sims*100).toFixed(1)), backgroundColor: '#e53935' }]
         },
-        options: { 
-            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-            plugins: { 
-                legend: { display: false },
-                datalabels: { anchor: 'end', align: 'right', formatter: v => v + '%', color: '#e53935' } 
-            },
-            scales: { x: { display: false, max: Math.max(...riskData.map(Number)) + 20 }, y: { grid: { display: false } } },
-            layout: { padding: { right: 50 } }
-        }
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { datalabels: { anchor: 'end', align: 'right', formatter: v => v + '%' } } }
     });
 }
 </script>
