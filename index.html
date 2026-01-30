@@ -5,7 +5,6 @@
     <title>結構型商品模擬分析</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background: #f4f7f9; margin: 0; padding: 20px; }
         .container { max-width: 1500px; margin: auto; }
@@ -20,9 +19,9 @@
         h4 { margin: 15px 0 5px 0; color: #008080; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         label { display: block; margin-top: 10px; font-size: 12px; font-weight: bold; color: #666; }
         input, select { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; transition: background 0.3s; }
+        button { width: 100%; padding: 15px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; }
         button:hover { background: #006666; }
-        #status { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 8px; display: none; background: #e6fffa; }
+        #status { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 8px; display: none; background: #fff5f5; border: 1px solid #feb2b2; }
         .chart-container { flex-grow: 1; position: relative; width: 100%; min-height: 0; }
     </style>
 </head>
@@ -34,32 +33,22 @@
     <div class="main-layout">
         <div class="sidebar">
             <h4>1. 標的設定</h4>
-            <input type="text" id="tickers" value="TSM, NVDA, TSLA">
+            <input type="text" id="tickers" value="TSM.US, NVDA.US, TSLA.US" placeholder="美股請加 .US (如 AAPL.US)">
+            <p style="font-size:11px; color:#666; margin-top:5px;">* 美股後綴 .US，台股後綴 .TW</p>
             
             <h4>2. 產品條件</h4>
-            <label>天期 (月)</label>
-            <input type="number" id="C8" value="12">
-            <label>年化配息 (%)</label>
-            <input type="number" id="C16" value="15">
-            <label>KO 門檻 (%)</label>
-            <input type="number" id="C9" value="100">
-            <label>KI 門檻 (%)</label>
-            <input type="number" id="C10" value="60">
-            <label>Strike (%)</label>
-            <input type="number" id="C11" value="75">
-            <label>KO Start (月)</label>
-            <input type="number" id="C12" value="1">
+            <label>天期 (月)</label><input type="number" id="C8" value="12">
+            <label>年化配息 (%)</label><input type="number" id="C16" value="15">
+            <label>KO 門檻 (%)</label><input type="number" id="C9" value="100">
+            <label>KI 門檻 (%)</label><input type="number" id="C10" value="60">
+            <label>Strike (%)</label><input type="number" id="C11" value="75">
+            <label>KO Start (月)</label><input type="number" id="C12" value="1">
             <label>KI 形式</label>
-            <select id="C13">
-                <option value="A">美式 (全程)</option>
-                <option value="E">歐式 (期末)</option>
-            </select>
+            <select id="C13"><option value="A">美式 (全程)</option><option value="E">歐式 (期末)</option></select>
             
             <h4>3. 模擬設定</h4>
-            <label>無風險利率 (%)</label>
-            <input type="number" id="C14" value="4.5">
-            <label>模擬次數</label>
-            <input type="number" id="idSims" value="1000">
+            <label>無風險利率 (%)</label><input type="number" id="C14" value="4.5">
+            <label>模擬次數</label><input type="number" id="idSims" value="1000">
             
             <button onclick="runWorkflow()">執行蒙地卡羅模擬</button>
             <div id="status"></div>
@@ -91,24 +80,31 @@
 Chart.register(ChartDataLabels);
 let charts = {};
 
+async function fetchPrice(ticker) {
+    // Stooq CSV 下載連結格式
+    const url = `https://stooq.com/q/d/l/?s=${ticker}&i=d`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`${ticker} 下載失敗`);
+    const csvText = await response.text();
+    const rows = csvText.trim().split('\n').slice(1); // 移除 Header
+    const prices = rows.map(row => parseFloat(row.split(',')[4])); // 抓取 Close 欄位
+    return prices.filter(p => !isNaN(p)).reverse().slice(0, 252); // 取最近一年
+}
+
 async function runWorkflow() {
     const status = document.getElementById('status');
     const tickers = document.getElementById('tickers').value.split(',').map(s => s.trim().toUpperCase());
-    status.style.display = "block"; status.innerText = "⏳ 模擬運算中...";
+    status.style.display = "block"; status.innerText = "⏳ 正在從 Stooq 下載數據...";
+
     try {
         const allPrices = await Promise.all(tickers.map(t => fetchPrice(t)));
         const analysis = analyzeData(allPrices);
         const results = simulateFCN(analysis);
         updateUI(tickers, analysis, results);
         status.innerText = "✅ 模擬完成";
-    } catch (e) { status.innerText = "❌ 錯誤: " + e.message; }
-}
-
-async function fetchPrice(ticker) {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y`;
-    const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
-    const data = await res.json();
-    return data.chart.result[0].indicators.adjclose[0].adjclose.filter(p => p !== null);
+    } catch (e) {
+        status.innerText = "❌ 連線受阻: " + e.message + "。請嘗試手動輸入模式。";
+    }
 }
 
 function analyzeData(priceSeries) {
@@ -123,9 +119,10 @@ function analyzeData(priceSeries) {
     const matrix = Array.from({length:n}, (_,i) => Array.from({length:n}, (_,j) => {
         if(i===j) return 1;
         const ri = returns[i], rj = returns[j];
-        const mi = ri.reduce((a,b)=>a+b,0)/ri.length, mj = rj.reduce((a,b)=>a+b,0)/rj.length;
+        const len = Math.min(ri.length, rj.length);
+        const mi = ri.reduce((a,b)=>a+b,0)/len, mj = rj.reduce((a,b)=>a+b,0)/len;
         let num=0, d1=0, d2=0;
-        for(let k=0; k<ri.length; k++){
+        for(let k=0; k<len; k++){
             num += (ri[k]-mi)*(rj[k]-mj); d1 += Math.pow(ri[k]-mi,2); d2 += Math.pow(rj[k]-mj,2);
         }
         return num/Math.sqrt(d1*d2);
@@ -206,29 +203,14 @@ function updateUI(tickers, analysis, res) {
     document.getElementById('vDur').innerText = (res.durations/sims).toFixed(0);
 
     if(charts.scene) charts.scene.destroy();
-    let labels = res.koCounts.map((_, i) => `情境${i+1}\n(${i===0?'1-26':(i*21+6)+'-'+((i+1)*21+5)}天)`);
-    labels.push("情境13\n安全到期", "情境14\n發生接股");
     charts.scene = new Chart(document.getElementById('scenarioChart'), {
         type: 'bar',
         data: {
-            labels: labels,
-            datasets: [{
-                data: [...res.koCounts, res.safe, res.ki],
-                backgroundColor: labels.map((_, i) => i < 12 ? '#4db6ac' : (i === 12 ? '#1a237e' : '#e53935'))
-            }]
+            labels: [...res.koCounts.map((_, i) => `情境${i+1}`), "安全到期", "發生接股"],
+            datasets: [{ data: [...res.koCounts, res.safe, res.ki], backgroundColor: '#4db6ac' }]
         },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: { datalabels: { anchor: 'end', align: 'top', font: { weight: 'bold' } }, legend: { display: false } },
-            scales: { y: { beginAtZero: true, grid: { display: false } } }
-        }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
     });
-
-    Plotly.newPlot('heatmap', [{
-        z: analysis.matrix, x: tickers, y: tickers, type: 'heatmap',
-        colorscale: [[0, '#f2fdfd'], [0.5, '#4db6ac'], [1, '#008080']],
-        text: analysis.matrix.map(row => row.map(v => v.toFixed(2))), texttemplate: "%{text}"
-    }], { margin: {t:0, b:40, l:40, r:0}, responsive: true });
 
     if(charts.risk) charts.risk.destroy();
     const riskData = res.kiAssetCounts.map(v => (v/sims*100).toFixed(1));
@@ -236,28 +218,16 @@ function updateUI(tickers, analysis, res) {
         type: 'bar',
         data: {
             labels: tickers,
-            datasets: [{
-                data: riskData,
-                backgroundColor: '#e53935',
-                barThickness: 30
-            }]
+            datasets: [{ data: riskData, backgroundColor: '#e53935', barThickness: 30 }]
         },
         options: { 
-            indexAxis: 'y',
-            responsive: true,
-            maintainAspectRatio: false,
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
             plugins: { 
                 legend: { display: false },
-                datalabels: { 
-                    anchor: 'end', align: 'right', formatter: v => v + '%',
-                    font: { weight: 'bold', size: 13 }, offset: 8, color: '#e53935'
-                } 
+                datalabels: { anchor: 'end', align: 'right', formatter: v => v + '%', color: '#e53935' } 
             },
-            scales: { 
-                x: { beginAtZero: true, max: Math.max(...riskData.map(Number)) + 20, grid: { display: false }, ticks: { display: false } },
-                y: { grid: { display: false }, ticks: { font: { weight: 'bold' } } }
-            },
-            layout: { padding: { right: 60, top: 20, bottom: 20 } }
+            scales: { x: { display: false, max: Math.max(...riskData.map(Number)) + 20 }, y: { grid: { display: false } } },
+            layout: { padding: { right: 50 } }
         }
     });
 }
