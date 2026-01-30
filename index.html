@@ -9,19 +9,19 @@
         body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background: #f4f7f9; margin: 0; padding: 20px; }
         .container { max-width: 1500px; margin: auto; }
         .header { background: #008080; color: white; padding: 15px 25px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .main-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
+        .main-layout { display: grid; grid-template-columns: 380px 1fr; gap: 20px; }
         .sidebar { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         .kpi-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px; }
         .kpi-box { background: white; padding: 20px; border-radius: 15px; text-align: center; border-top: 6px solid #008080; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
         .wide-card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-bottom: 20px; }
-        .viz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .viz-card { background: white; padding: 20px; border-radius: 15px; height: 420px; display: flex; flex-direction: column; }
         h4 { margin: 15px 0 5px 0; color: #008080; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         label { display: block; margin-top: 10px; font-size: 12px; font-weight: bold; color: #666; }
-        input, select { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        input, select, textarea { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        textarea { height: 80px; font-family: monospace; font-size: 11px; resize: vertical; }
         button { width: 100%; padding: 15px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; }
         button:hover { background: #006666; }
-        #status { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 8px; display: none; background: #fff5f5; border: 1px solid #feb2b2; }
+        #status { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 8px; display: none; background: #e6fffa; }
         .chart-container { flex-grow: 1; position: relative; width: 100%; min-height: 0; }
     </style>
 </head>
@@ -32,10 +32,21 @@
 
     <div class="main-layout">
         <div class="sidebar">
-            <h4>1. 標的設定</h4>
-            <input type="text" id="tickers" value="TSM.US, NVDA.US, TSLA.US" placeholder="美股請加 .US (如 AAPL.US)">
-            <p style="font-size:11px; color:#666; margin-top:5px;">* 美股後綴 .US，台股後綴 .TW</p>
-            
+            <h4>1. 數據貼入 (從 Excel 複製一整列價格)</h4>
+            <div id="dataInputs">
+                <label>標的 1 (如 NVDA)</label>
+                <input type="text" id="t1" value="NVDA">
+                <textarea id="p1" placeholder="貼入 Excel 價格序列..."></textarea>
+                
+                <label>標的 2 (如 TSM)</label>
+                <input type="text" id="t2" value="TSM">
+                <textarea id="p2" placeholder="貼入 Excel 價格序列..."></textarea>
+                
+                <label>標的 3 (如 TSLA)</label>
+                <input type="text" id="t3" value="TSLA">
+                <textarea id="p3" placeholder="貼入 Excel 價格序列..."></textarea>
+            </div>
+
             <h4>2. 產品條件</h4>
             <label>天期 (月)</label><input type="number" id="C8" value="12">
             <label>年化配息 (%)</label><input type="number" id="C16" value="15">
@@ -50,7 +61,7 @@
             <label>無風險利率 (%)</label><input type="number" id="C14" value="4.5">
             <label>模擬次數</label><input type="number" id="idSims" value="1000">
             
-            <button onclick="runWorkflow()">執行蒙地卡羅模擬</button>
+            <button onclick="runLocalSimulation()">執行蒙地卡羅模擬</button>
             <div id="status"></div>
         </div>
 
@@ -65,12 +76,9 @@
                 <div style="height: 380px;"><canvas id="scenarioChart"></canvas></div>
             </div>
 
-            <div class="viz-grid">
-                <div class="viz-card"><h3>相關係數矩陣</h3><div id="heatmap" style="flex-grow:1;"></div></div>
-                <div class="viz-card">
-                    <h3>接股風險貢獻</h3>
-                    <div class="chart-container"><canvas id="riskChart"></canvas></div>
-                </div>
+            <div class="viz-card">
+                <h3>接股風險貢獻</h3>
+                <div class="chart-container"><canvas id="riskChart"></canvas></div>
             </div>
         </div>
     </div>
@@ -80,34 +88,35 @@
 Chart.register(ChartDataLabels);
 let charts = {};
 
-async function fetchPrice(ticker) {
-    // Stooq CSV 下載連結格式
-    const url = `https://stooq.com/q/d/l/?s=${ticker}&i=d`;
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`${ticker} 下載失敗`);
-    const csvText = await response.text();
-    const rows = csvText.trim().split('\n').slice(1); // 移除 Header
-    const prices = rows.map(row => parseFloat(row.split(',')[4])); // 抓取 Close 欄位
-    return prices.filter(p => !isNaN(p)).reverse().slice(0, 252); // 取最近一年
+function parsePrices(text) {
+    return text.trim().split(/[\s,]+/).map(Number).filter(n => !isNaN(n) && n > 0);
 }
 
-async function runWorkflow() {
+function runLocalSimulation() {
     const status = document.getElementById('status');
-    const tickers = document.getElementById('tickers').value.split(',').map(s => s.trim().toUpperCase());
-    status.style.display = "block"; status.innerText = "⏳ 正在從 Stooq 下載數據...";
+    status.style.display = "block"; status.innerText = "⏳ 正在計算統計量並模擬...";
 
-    try {
-        const allPrices = await Promise.all(tickers.map(t => fetchPrice(t)));
-        const analysis = analyzeData(allPrices);
-        const results = simulateFCN(analysis);
-        updateUI(tickers, analysis, results);
-        status.innerText = "✅ 模擬完成";
-    } catch (e) {
-        status.innerText = "❌ 連線受阻: " + e.message + "。請嘗試手動輸入模式。";
-    }
+    setTimeout(() => {
+        try {
+            const p1 = parsePrices(document.getElementById('p1').value);
+            const p2 = parsePrices(document.getElementById('p2').value);
+            const p3 = parsePrices(document.getElementById('p3').value);
+            const tickers = [document.getElementById('t1').value, document.getElementById('t2').value, document.getElementById('t3').value];
+
+            if (p1.length < 5 || p2.length < 5 || p3.length < 5) throw new Error("請確保每個標的都貼入了足夠的價格數據");
+
+            const analysis = calculateMarketStats([p1, p2, p3]);
+            const results = performMonteCarlo(analysis);
+            updateUI(tickers, results);
+            status.innerText = "✅ 計算完成";
+        } catch (e) {
+            status.style.background = "#fff5f5";
+            status.innerText = "❌ 錯誤: " + e.message;
+        }
+    }, 50);
 }
 
-function analyzeData(priceSeries) {
+function calculateMarketStats(priceSeries) {
     const n = priceSeries.length;
     const returns = priceSeries.map(s => {
         let r = []; for(let i=1; i<s.length; i++) r.push(Math.log(s[i]/s[i-1])); return r;
@@ -130,8 +139,9 @@ function analyzeData(priceSeries) {
     return { matrix, vols, nAssets: n };
 }
 
-function simulateFCN(analysis) {
+function performMonteCarlo(analysis) {
     const tenor = parseInt(document.getElementById('C8').value);
+    const cpn = parseFloat(document.getElementById('C16').value)/100;
     const ko = parseFloat(document.getElementById('C9').value)/100;
     const ki = parseFloat(document.getElementById('C10').value)/100;
     const strike = parseFloat(document.getElementById('C11').value)/100;
@@ -139,7 +149,6 @@ function simulateFCN(analysis) {
     const kiType = document.getElementById('C13').value;
     const rf = parseFloat(document.getElementById('C14').value)/100;
     const sims = parseInt(document.getElementById('idSims').value);
-    const cpn = parseFloat(document.getElementById('C16').value)/100;
 
     const n = analysis.nAssets;
     const L = Array.from({length:n},()=>Array(n).fill(0));
@@ -151,8 +160,8 @@ function simulateFCN(analysis) {
     }
 
     let res = { koCounts: new Array(12).fill(0), safe: 0, ki: 0, kiAssetCounts: new Array(n).fill(0), payoffs: 0, durations: 0 };
-    const gPeriodDays = (21 * gStart) + 4;
     const totalDays = (21 * tenor) + 5;
+    const gPeriodDays = (21 * gStart) + 4;
 
     for(let s=0; s<sims; s++) {
         let S = new Array(n).fill(1.0);
@@ -197,7 +206,7 @@ function simulateFCN(analysis) {
     return res;
 }
 
-function updateUI(tickers, analysis, res) {
+function updateUI(tickers, res) {
     const sims = parseInt(document.getElementById('idSims').value);
     document.getElementById('vFV').innerText = (res.payoffs/sims).toFixed(2);
     document.getElementById('vDur').innerText = (res.durations/sims).toFixed(0);
