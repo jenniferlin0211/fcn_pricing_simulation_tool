@@ -8,27 +8,27 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f4f7f9; margin: 0; padding: 10px; }
+        body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background: #f4f7f9; margin: 0; padding: 15px; }
         .container { max-width: 1500px; margin: auto; }
-        .header { background: #008080; color: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; text-align: center; }
-        .main-layout { display: flex; flex-direction: column; gap: 15px; }
-        @media (min-width: 992px) { .main-layout { display: grid; grid-template-columns: 320px 1fr; } }
+        .header { background: #008080; color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .main-layout { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        @media (min-width: 992px) { .main-layout { grid-template-columns: 320px 1fr; } }
         .sidebar { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .kpi-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-        .kpi-box { background: white; padding: 15px; border-radius: 12px; text-align: center; border-top: 5px solid #008080; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        .wide-card { background: white; padding: 20px; border-radius: 15px; margin-bottom: 15px; overflow-x: auto; }
-        h4 { margin: 10px 0 5px 0; color: #008080; border-bottom: 1px solid #eee; }
-        label { display: block; margin-top: 8px; font-size: 12px; font-weight: bold; color: #666; }
-        input, select { width: 100%; padding: 10px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; } /* 手機輸入框字體加大避免自動縮放 */
-        button { width: 100%; padding: 15px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 18px; font-weight: bold; margin-top: 15px; }
-        button:disabled { background: #ccc; cursor: not-allowed; }
-        #status { font-size: 13px; margin-top: 10px; padding: 10px; border-radius: 8px; display: none; line-height: 1.4; }
+        .kpi-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .kpi-box { background: white; padding: 20px; border-radius: 15px; text-align: center; border-top: 6px solid #008080; }
+        .wide-card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-bottom: 20px; }
+        h4 { margin: 15px 0 5px 0; color: #008080; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        label { display: block; margin-top: 10px; font-size: 12px; font-weight: bold; color: #666; }
+        input, select { width: 100%; padding: 10px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 15px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; }
+        button:disabled { background: #aaa; }
+        #status { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 8px; display: none; line-height: 1.5; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header"><h2 style="margin:0">FCN 蒙地卡羅模擬器</h2></div>
+    <div class="header"><h2 style="margin:0">結構型商品模擬分析 (手機優化版)</h2></div>
 
     <div class="main-layout">
         <div class="sidebar">
@@ -40,36 +40,44 @@
             <input type="number" id="C8" value="12">
             <label>年化配息 (%)</label>
             <input type="number" id="C16" value="15">
-            <label>KO / KI 門檻 (%)</label>
-            <div style="display:flex; gap:5px;">
-                <input type="number" id="C9" value="100" placeholder="KO">
-                <input type="number" id="C10" value="60" placeholder="KI">
-            </div>
-            
+            <label>KO 門檻 (%)</label>
+            <input type="number" id="C9" value="100">
+            <label>KI 門檻 (%)</label>
+            <input type="number" id="C10" value="60">
+            <label>Strike (%)</label>
+            <input type="number" id="C11" value="75">
+            <label>KO Start (月)</label>
+            <input type="number" id="C12" value="1">
             <label>KI 形式</label>
             <select id="C13">
                 <option value="A">美式 (全程)</option>
                 <option value="E">歐式 (期末)</option>
             </select>
             
-            <button id="runBtn" onclick="runWorkflow()">執行模擬分析</button>
+            <h4>3. 模擬設定</h4>
+            <label>無風險利率 (%)</label>
+            <input type="number" id="C14" value="4.5">
+            <label>模擬次數</label>
+            <input type="number" id="idSims" value="1000">
+            
+            <button id="runBtn" onclick="runWorkflow()">執行蒙地卡羅模擬</button>
             <div id="status"></div>
         </div>
 
         <div class="content-area">
             <div class="kpi-row">
-                <div class="kpi-box"><div>Fair Value</div><div id="vFV" style="font-size:24px; font-weight:bold; color:#008080">--</div></div>
-                <div class="kpi-box"><div>平均存續(天)</div><div id="vDur" style="font-size:24px; font-weight:bold; color:#38b2ac">--</div></div>
+                <div class="kpi-box"><div>Fair Value (%)</div><div id="vFV" style="font-size:32px; font-weight:bold; color:#008080">--</div></div>
+                <div class="kpi-box"><div>平均存續 (天)</div><div id="vDur" style="font-size:32px; font-weight:bold; color:#38b2ac">--</div></div>
             </div>
 
             <div class="wide-card">
-                <h3 style="margin:0 0 10px 0; font-size:16px;">情境分佈詳情</h3>
-                <div style="height: 300px;"><canvas id="scenarioChart"></canvas></div>
+                <h3 style="margin-top:0">情境分佈詳情</h3>
+                <div style="height: 380px;"><canvas id="scenarioChart"></canvas></div>
             </div>
 
             <div class="wide-card">
-                <h3 style="margin:0 0 10px 0; font-size:16px;">相關係數矩陣</h3>
-                <div id="heatmap" style="height:300px;"></div>
+                <h3>相關係數矩陣</h3>
+                <div id="heatmap" style="height: 350px;"></div>
             </div>
         </div>
     </div>
@@ -81,31 +89,21 @@ let charts = {};
 
 async function fetchPrice(ticker) {
     const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y`;
-    // 手機端對 allorigins 的相容性較好
     const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(yahooUrl)}`;
     
     try {
         const response = await fetch(proxyUrl);
-        if (!response.ok) {
-            throw new Error("網路連線異常");
-        }
-        
-        const data = await response.json();
-        // 嚴格解析機制
-        if (data && data.contents) {
+        if (response.ok) {
+            const data = await response.json();
             const jsonData = JSON.parse(data.contents);
             if (jsonData.chart && jsonData.chart.result) {
-                const res = jsonData.chart.result[0];
-                const prices = res.indicators.adjclose[0].adjclose;
+                const prices = jsonData.chart.result[0].indicators.adjclose[0].adjclose;
                 return prices.filter(p => p !== null);
-            } else {
-                throw new Error("Yahoo 回傳數據格式錯誤");
             }
-        } else {
-            throw new Error("無法解析代理伺服器內容");
         }
+        throw new Error("數據抓取失敗");
     } catch (err) {
-        throw new Error(ticker + ": " + err.message);
+        throw new Error(ticker + " 抓取錯誤");
     }
 }
 
@@ -114,27 +112,26 @@ async function runWorkflow() {
     const status = document.getElementById('status');
     const tickers = document.getElementById('tickers').value.split(',').map(s => s.trim().toUpperCase());
     
-    // 初始化 UI
     btn.disabled = true;
+    btn.innerText = "計算中...";
     status.style.display = "block";
-    status.style.background = "#e6fffa";
-    status.innerText = "⏳ 數據下載中，請稍候...";
+    status.innerText = "⏳ 正在抓取數據...";
 
     try {
         const allPrices = await Promise.all(tickers.map(t => fetchPrice(t)));
+        status.innerText = "⏳ 數據下載成功，模擬運算中...";
         
-        status.innerText = "⏳ 正在進行蒙地卡羅模擬...";
         const analysis = analyzeData(allPrices);
         const results = simulateFCN(analysis);
-        
         updateUI(tickers, analysis, results);
+        
         status.innerText = "✅ 模擬完成";
     } catch (e) {
-        status.style.background = "#fff5f5";
-        status.innerText = "❌ 失敗: " + e.message;
-        alert("錯誤報告: " + e.message); // 手機端增加彈窗提示
+        status.innerText = "❌ 錯誤: " + e.message;
+        alert(e.message);
     } finally {
         btn.disabled = false;
+        btn.innerText = "執行蒙地卡羅模擬";
     }
 }
 
@@ -162,8 +159,7 @@ function analyzeData(priceSeries) {
             const mi = ri.reduce((a, b) => a + b, 0) / ri.length;
             const mj = rj.reduce((a, b) => a + b, 0) / rj.length;
             let num = 0, d1 = 0, d2 = 0;
-            const len = Math.min(ri.length, rj.length);
-            for (let k = 0; k < len; k++) {
+            for (let k = 0; k < ri.length; k++) {
                 num += (ri[k] - mi) * (rj[k] - mj);
                 d1 += Math.pow(ri[k] - mi, 2);
                 d2 += Math.pow(rj[k] - mj, 2);
@@ -171,7 +167,6 @@ function analyzeData(priceSeries) {
             return num / Math.sqrt(d1 * d2);
         }
     }));
-
     return { matrix, vols, nAssets: n };
 }
 
@@ -179,20 +174,19 @@ function simulateFCN(analysis) {
     const tenor = parseInt(document.getElementById('C8').value);
     const ko = parseFloat(document.getElementById('C9').value)/100;
     const ki = parseFloat(document.getElementById('C10').value)/100;
+    const strike = parseFloat(document.getElementById('C11').value)/100;
+    const gStart = parseInt(document.getElementById('C12').value);
     const kiType = document.getElementById('C13').value;
-    const rf = 0.045; 
+    const rf = parseFloat(document.getElementById('C14').value)/100;
+    const sims = parseInt(document.getElementById('idSims').value);
     const cpn = parseFloat(document.getElementById('C16').value)/100;
-    const sims = 1000;
-    const n = analysis.nAssets;
 
-    // Cholesky 分解 (多行結構)
+    const n = analysis.nAssets;
     const L = Array.from({length:n},()=>Array(n).fill(0));
     for(let i=0; i<n; i++) {
         for(let j=0; j<=i; j++) {
             let s = 0;
-            for(let k=0; k<j; k++) {
-                s += L[i][k] * L[j][k];
-            }
+            for(let k=0; k<j; k++) { s += L[i][k] * L[j][k]; }
             if (i === j) {
                 L[i][j] = Math.sqrt(Math.max(0, analysis.matrix[i][i] - s));
             } else {
@@ -207,7 +201,6 @@ function simulateFCN(analysis) {
     for(let s=0; s<sims; s++) {
         let S = new Array(n).fill(1.0);
         let wasKI = false, isKO = false;
-        
         for(let t=1; t<=totalDays; t++) {
             let zRaw = Array.from({length:n}, () => {
                 let u=Math.random(), v=Math.random();
@@ -219,7 +212,7 @@ function simulateFCN(analysis) {
                 S[i] *= Math.exp((rf - 0.5*analysis.vols[i]**2)*(1/252) + analysis.vols[i]*Math.sqrt(1/252)*zCorr);
                 if (kiType === "A" && S[i] <= ki) { wasKI = true; }
             }
-            if (t > 21 && Math.min(...S) >= ko) {
+            if (t > (gStart * 21) && Math.min(...S) >= ko) {
                 isKO = true;
                 res.koCounts[Math.min(11, Math.floor(t/21))]++;
                 res.payoffs += 100 * (1 + (t/252)*cpn) * Math.exp(-rf*t/252);
@@ -231,9 +224,9 @@ function simulateFCN(analysis) {
             let worst = Math.min(...S);
             res.durations += totalDays;
             if (kiType === "E" && worst <= ki) { wasKI = true; }
-            if (wasKI && worst < 1.0) {
+            if (wasKI && worst < strike) {
                 res.ki++;
-                res.payoffs += (100 * worst) * Math.exp(-rf*totalDays/252);
+                res.payoffs += (100 * (worst/strike) + 100*(totalDays/252)*cpn) * Math.exp(-rf*totalDays/252);
             } else {
                 res.safe++;
                 res.payoffs += 100 * (1 + (totalDays/252)*cpn) * Math.exp(-rf*totalDays/252);
@@ -244,31 +237,23 @@ function simulateFCN(analysis) {
 }
 
 function updateUI(tickers, analysis, res) {
-    const sims = 1000;
-    document.getElementById('vFV').innerText = (res.payoffs/sims).toFixed(2) + "%";
+    const sims = parseInt(document.getElementById('idSims').value);
+    document.getElementById('vFV').innerText = (res.payoffs/sims).toFixed(2);
     document.getElementById('vDur').innerText = (res.durations/sims).toFixed(0);
 
-    if(charts.scene) { charts.scene.destroy(); }
+    if(charts.scene) charts.scene.destroy();
     charts.scene = new Chart(document.getElementById('scenarioChart'), {
         type: 'bar',
         data: {
             labels: [...res.koCounts.map((_,i)=>`M${i+1}`), "安全", "接股"],
-            datasets: [{ 
-                data: [...res.koCounts, res.safe, res.ki], 
-                backgroundColor: '#008080' 
-            }]
+            datasets: [{ data: [...res.koCounts, res.safe, res.ki], backgroundColor: '#008080' }]
         },
-        options: { 
-            responsive: true, 
-            maintainAspectRatio: false,
-            plugins: { datalabels: { display: true, anchor: 'end', align: 'top' } }
-        }
+        options: { responsive: true, maintainAspectRatio: false }
     });
 
     Plotly.newPlot('heatmap', [{
-        z: analysis.matrix, x: tickers, y: tickers, type: 'heatmap',
-        colorscale: [[0, '#f2fdfd'], [1, '#008080']]
-    }], { margin: {t:10, b:40, l:40, r:10}, responsive: true });
+        z: analysis.matrix, x: tickers, y: tickers, type: 'heatmap', colorscale: 'Viridis'
+    }], { margin: {t:0,b:40,l:40,r:0}, responsive: true });
 }
 </script>
 </body>
