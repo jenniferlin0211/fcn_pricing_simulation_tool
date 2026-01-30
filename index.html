@@ -2,13 +2,13 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>結構型商品模擬分析</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background: #f4f7f9; margin: 0; padding: 15px; }
+        body { font-family: -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif; background: #f4f7f9; margin: 0; padding: 15px; }
         .container { max-width: 1500px; margin: auto; }
         .header { background: #008080; color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; text-align: center; }
         .main-layout { display: grid; grid-template-columns: 1fr; gap: 20px; }
@@ -16,19 +16,19 @@
         .sidebar { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         .kpi-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
         .kpi-box { background: white; padding: 20px; border-radius: 15px; text-align: center; border-top: 6px solid #008080; }
-        .wide-card { background: white; padding: 25px; border-radius: 15px; margin-bottom: 20px; }
+        .wide-card { background: white; padding: 25px; border-radius: 15px; margin-bottom: 20px; overflow-x: auto; }
         h4 { margin: 15px 0 5px 0; color: #008080; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         label { display: block; margin-top: 10px; font-size: 12px; font-weight: bold; color: #666; }
-        input, select { width: 100%; padding: 10px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        button { width: 100%; padding: 15px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; }
+        input, select { width: 100%; padding: 12px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 18px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 18px; font-weight: bold; margin-top: 20px; }
         button:disabled { background: #ccc; }
-        #status { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 8px; display: none; white-space: pre-wrap; }
+        #status { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 8px; display: none; white-space: pre-wrap; word-break: break-all; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header"><h2 style="margin:0">FCN 蒙地卡羅模擬 (自動抓取強韌版)</h2></div>
+    <div class="header"><h2 style="margin:0">FCN 蒙地卡羅模擬器</h2></div>
     <div class="main-layout">
         <div class="sidebar">
             <h4>1. 標的設定</h4>
@@ -45,7 +45,7 @@
             <h4>3. 模擬設定</h4>
             <label>無風險利率 (%)</label><input type="number" id="C14" value="4.5">
             <label>模擬次數</label><input type="number" id="idSims" value="1000">
-            <button id="runBtn" onclick="runWorkflow()">執行模擬</button>
+            <button id="runBtn" onclick="runWorkflow()">執行模擬分析</button>
             <div id="status"></div>
         </div>
         <div class="content-area">
@@ -53,7 +53,7 @@
                 <div class="kpi-box"><div>Fair Value (%)</div><div id="vFV" style="font-size:32px; font-weight:bold; color:#008080">--</div></div>
                 <div class="kpi-box"><div>平均存續 (天)</div><div id="vDur" style="font-size:32px; font-weight:bold; color:#38b2ac">--</div></div>
             </div>
-            <div class="wide-card"><h3>情境分佈</h3><div style="height:350px;"><canvas id="scenarioChart"></canvas></div></div>
+            <div class="wide-card"><h3>情境分佈詳情</h3><div style="height:350px;"><canvas id="scenarioChart"></canvas></div></div>
             <div class="wide-card"><h3>相關係數矩陣</h3><div id="heatmap" style="height:350px;"></div></div>
         </div>
     </div>
@@ -63,39 +63,37 @@
 Chart.register(ChartDataLabels);
 let charts = {};
 
-// 備援抓取機制：嘗試多個代理伺服器
 async function fetchWithRetry(ticker) {
     const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y`;
-    const proxies = [
-        (url) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-        (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-        (url) => `https://thingproxy.freeboard.io/fetch/${url}`
+    // 使用多重備援代理，增加隨機參數避免快取
+    const cacheBuster = `&cb=${Date.now()}`;
+    const proxyList = [
+        `https://api.allorigins.win/get?url=${encodeURIComponent(yahooUrl + cacheBuster)}`,
+        `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`,
+        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(yahooUrl)}`
     ];
 
-    for (let i = 0; i < proxies.length; i++) {
+    let lastError = "";
+    for (let proxy of proxyList) {
         try {
-            const target = proxies[i](yahooUrl);
-            const response = await fetch(target);
+            const response = await fetch(proxy);
             if (response.ok) {
-                const rawData = await response.json();
-                let jsonData;
-                // 解析邏輯（適應不同代理的回傳格式）
-                if (rawData.contents) {
-                    jsonData = JSON.parse(rawData.contents);
-                } else {
-                    jsonData = rawData;
-                }
-                
-                if (jsonData.chart && jsonData.chart.result) {
-                    const prices = jsonData.chart.result[0].indicators.adjclose[0].adjclose.filter(p => p !== null);
-                    if (prices.length > 0) return prices;
+                const data = await response.json();
+                let json = data.contents ? JSON.parse(data.contents) : data;
+                if (json.chart && json.chart.result) {
+                    const adjClose = json.chart.result[0].indicators.adjclose[0].adjclose;
+                    const validPrices = adjClose.filter(p => p !== null);
+                    if (validPrices.length > 0) {
+                        return validPrices;
+                    }
                 }
             }
         } catch (e) {
-            console.warn(`代理 ${i} 失敗，嘗試下一個...`);
+            lastError = e.message;
+            continue; 
         }
     }
-    throw new Error(`${ticker}: 所有連線通道均失效，請檢查網路。`);
+    throw new Error(`${ticker} 抓取失敗: ${lastError}`);
 }
 
 async function runWorkflow() {
@@ -106,11 +104,11 @@ async function runWorkflow() {
     btn.disabled = true;
     status.style.display = "block";
     status.style.background = "#e6fffa";
-    status.innerText = "⏳ 正在嘗試多重連線抓取數據...";
+    status.innerText = "⏳ 正在跨越防火牆獲取數據...";
 
     try {
         const allPrices = await Promise.all(tickers.map(t => fetchWithRetry(t)));
-        status.innerText = "⏳ 數據下載成功，模擬中...";
+        status.innerText = "⏳ 數據下載成功，正在進行蒙地卡羅運算...";
         
         const analysis = analyzeData(allPrices);
         const results = simulateFCN(analysis);
@@ -119,33 +117,39 @@ async function runWorkflow() {
         status.innerText = "✅ 模擬完成";
     } catch (e) {
         status.style.background = "#fff5f5";
-        status.innerText = "❌ 失敗: " + e.message;
-        alert(e.message);
+        status.innerText = "❌ " + e.message + "\n(請嘗試切換 Wi-Fi 或 5G 網路)";
+        alert("連線失敗：" + e.message);
     } finally {
         btn.disabled = false;
     }
 }
 
-// --- 原始邏輯保持不變 ---
 function analyzeData(priceSeries) {
     const n = priceSeries.length;
     const returns = priceSeries.map(s => {
         let r = [];
-        for (let i = 1; i < s.length; i++) { r.push(Math.log(s[i] / s[i-1])); }
+        for (let i = 1; i < s.length; i++) {
+            r.push(Math.log(s[i] / s[i-1]));
+        }
         return r;
     });
+
     const vols = returns.map(r => {
         const m = r.reduce((a, b) => a + b, 0) / r.length;
         const v = r.reduce((a, b) => a + Math.pow(b - m, 2), 0) / (r.length - 1);
         return Math.sqrt(v) * Math.sqrt(252);
     });
+
     const matrix = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => {
-        if (i === j) { return 1.0; } else {
+        if (i === j) {
+            return 1.0;
+        } else {
             const ri = returns[i], rj = returns[j];
             const mi = ri.reduce((a, b) => a + b, 0) / ri.length;
             const mj = rj.reduce((a, b) => a + b, 0) / rj.length;
             let num = 0, d1 = 0, d2 = 0;
-            for (let k = 0; k < ri.length; k++) {
+            const len = Math.min(ri.length, rj.length);
+            for (let k = 0; k < len; k++) {
                 num += (ri[k] - mi) * (rj[k] - mj);
                 d1 += Math.pow(ri[k] - mi, 2);
                 d2 += Math.pow(rj[k] - mj, 2);
@@ -192,20 +196,25 @@ function simulateFCN(analysis) {
 
         for(let T=1; T<=totalDays; T++) {
             let zRaw = Array.from({length:n}, () => {
-                let u=0, v=0; while(u===0) u=Math.random(); while(v===0) v=Math.random();
-                return Math.sqrt(-2.0*Math.log(u))*Math.cos(2.0*Math.PI*v);
+                let u=0, v=0; 
+                while(u===0) { u=Math.random(); } 
+                while(v===0) { v=Math.random(); }
+                return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
             });
             for(let i=0; i<n; i++) {
-                let zCorr = 0; for(let j=0; j<=i; j++) zCorr += L[i][j] * zRaw[j];
+                let zCorr = 0; 
+                for(let j=0; j<=i; j++) { zCorr += L[i][j] * zRaw[j]; }
                 S[i] *= Math.exp((rf - 0.5 * analysis.vols[i]**2)*(1/252) + analysis.vols[i]*Math.sqrt(1/252)*zCorr);
-                if (kiType === "A" && S[i] <= ki) wasKI = true;
+                if (kiType === "A" && S[i] <= ki) { wasKI = true; }
             }
             if (T > gPeriodDays) {
-                for(let j=0; j<n; j++) if(S[j] >= ko) hasStockHitKO[j] = true;
-                if(hasStockHitKO.every(v => v === true)) {
+                for(let j=0; j<n; j++) {
+                    if (S[j] >= ko) { hasStockHitKO[j] = true; }
+                }
+                if (hasStockHitKO.every(v => v === true)) {
                     isKO = true;
                     let m = Math.min(11, Math.floor((T - 6) / 21) + 1);
-                    res.koCounts[m-1]++;
+                    res.koCounts[m]++;
                     res.payoffs += 100 * (1 + (T-5)/252*cpn) * Math.exp(-rf*T/252);
                     res.durations += T;
                     break;
@@ -215,7 +224,7 @@ function simulateFCN(analysis) {
         if (!isKO) {
             res.durations += totalDays;
             let worst = Math.min(...S);
-            if (kiType === "E" && worst <= ki) wasKI = true;
+            if (kiType === "E" && worst <= ki) { wasKI = true; }
             if (wasKI && worst < strike) {
                 res.ki++;
                 res.payoffs += (100 * (worst/strike) + 100*(totalDays-5)/252*cpn) * Math.exp(-rf*totalDays/252);
@@ -232,7 +241,7 @@ function updateUI(tickers, analysis, res) {
     const sims = parseInt(document.getElementById('idSims').value);
     document.getElementById('vFV').innerText = (res.payoffs/sims).toFixed(2);
     document.getElementById('vDur').innerText = (res.durations/sims).toFixed(0);
-    if(charts.scene) charts.scene.destroy();
+    if(charts.scene) { charts.scene.destroy(); }
     charts.scene = new Chart(document.getElementById('scenarioChart'), {
         type: 'bar',
         data: {
