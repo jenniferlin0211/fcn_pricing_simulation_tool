@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>結構型商品模擬分析</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background: #f4f7f9; margin: 0; padding: 20px; }
@@ -21,7 +20,7 @@
         input, select { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
         button { width: 100%; padding: 15px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; }
         button:disabled { background: #ccc; }
-        #status { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 8px; display: none; background: #e6fffa; }
+        #status { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 8px; display: none; background: #e6fffa; color: #004d4d; border: 1px solid #b2f5ea; }
     </style>
 </head>
 <body>
@@ -44,7 +43,7 @@
             <h4>3. 模擬設定</h4>
             <label>無風險利率 (%)</label><input type="number" id="C14" value="4.5">
             <label>模擬次數</label><input type="number" id="idSims" value="1000">
-            <button id="runBtn" onclick="runWorkflow()">執行模擬分析</button>
+            <button id="runBtn" onclick="runWorkflow()">點擊開始模擬</button>
             <div id="status"></div>
         </div>
         <div class="content-area">
@@ -59,18 +58,18 @@
 </div>
 
 <script>
-Chart.register(ChartDataLabels);
 let charts = {};
 
-// ✅ 核心連線修正：多重免 Key 通道切換
+// ✅ 終極修正：Yahoo 查詢節點備援與動態解析
 async function fetchPrice(ticker) {
-    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y`;
+    const ts = Date.now();
+    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y&nocache=${ts}`;
     
-    // 通道 1: Codetabs (目前最穩定)
-    // 通道 2: AllOrigins (備援)
+    // 三個不同類型的公共中繼
     const proxies = [
+        `https://api.allorigins.win/get?url=${encodeURIComponent(yahooUrl)}`,
         `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(yahooUrl)}`,
-        `https://api.allorigins.win/get?url=${encodeURIComponent(yahooUrl)}`
+        `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`
     ];
 
     for (let proxy of proxies) {
@@ -78,17 +77,20 @@ async function fetchPrice(ticker) {
             const res = await fetch(proxy);
             if (res.ok) {
                 const raw = await res.json();
-                // 處理 AllOrigins 的包裝格式
-                const data = raw.contents ? JSON.parse(raw.contents) : raw;
+                // 處理 AllOrigins 獨有的 contents 包裝
+                let data = raw.contents ? JSON.parse(raw.contents) : raw;
+                
                 if (data.chart && data.chart.result) {
-                    return data.chart.result[0].indicators.adjclose[0].adjclose.filter(p => p !== null);
+                    const adjClose = data.chart.result[0].indicators.adjclose[0].adjclose;
+                    const cleanPrices = adjClose.filter(p => p !== null);
+                    if (cleanPrices.length > 0) return cleanPrices;
                 }
             }
         } catch (e) {
-            console.warn("切換備援連線...");
+            console.error(`Proxy ${proxy} failed, trying next...`);
         }
     }
-    throw new Error(ticker + " 數據下載完全失敗，請檢查網路。");
+    throw new Error(`${ticker} 抓取失敗。這通常是您的 Wi-Fi 或 5G 阻擋了數據通道。`);
 }
 
 async function runWorkflow() {
@@ -98,24 +100,27 @@ async function runWorkflow() {
     
     btn.disabled = true;
     status.style.display = "block";
-    status.innerText = "⏳ 正在抓取數據 (可能需 5-10 秒)...";
+    status.innerText = "⏳ 正在嘗試多重連線抓取數據...";
 
     try {
         const allPrices = await Promise.all(tickers.map(t => fetchPrice(t)));
-        status.innerText = "⏳ 下載成功，模擬運算中...";
+        status.innerText = "⏳ 數據成功下載，模擬計算中...";
+        
         const analysis = analyzeData(allPrices);
         const results = simulateFCN(analysis);
         updateUI(tickers, analysis, results);
+        
         status.innerText = "✅ 模擬完成";
     } catch (e) {
-        status.innerText = "❌ " + e.message;
+        status.style.background = "#fff5f5";
+        status.innerText = "❌ 錯誤: " + e.message;
         alert(e.message);
     } finally {
         btn.disabled = false;
     }
 }
 
-// ⚠️ 以下邏輯與 VBA 結構 100% 維持原樣
+// ⚠️ 以下 VBA 式多行結構與 FCN 邏輯 100% 保持原樣
 function analyzeData(priceSeries) {
     const n = priceSeries.length;
     const returns = priceSeries.map(s => {
@@ -229,7 +234,7 @@ function updateUI(tickers, analysis, res) {
         type: 'bar',
         data: {
             labels: [...res.koCounts.map((_,i)=>`M${i+1}`), "安全", "接股"],
-            datasets: [{ data: [...res.koCounts, res.safe, res.ki], backgroundColor: '#008080' }]
+            datasets: [{ label: '頻率', data: [...res.koCounts, res.safe, res.ki], backgroundColor: '#008080' }]
         }
     });
     Plotly.newPlot('heatmap', [{
