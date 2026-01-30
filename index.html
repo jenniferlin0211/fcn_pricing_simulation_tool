@@ -11,7 +11,7 @@
         .container { max-width: 1500px; margin: auto; }
         .header { background: #008080; color: white; padding: 15px 25px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .main-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
-        .sidebar { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .sidebar { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); height: fit-content; }
         .kpi-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px; }
         .kpi-box { background: white; padding: 20px; border-radius: 15px; text-align: center; border-top: 6px solid #008080; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
         .wide-card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-bottom: 20px; }
@@ -22,9 +22,8 @@
         input, select { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
         button { width: 100%; padding: 15px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; transition: background 0.3s; }
         button:hover { background: #006666; }
-        #status { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 8px; display: none; line-height: 1.5; }
-        .loading { background: #e6fffa; color: #2c7a7b; border: 1px solid #b2f5ea; }
-        .error { background: #fff5f5; color: #c53030; border: 1px solid #feb2b2; }
+        #status { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 8px; display: none; background: #e6fffa; }
+        .chart-container { flex-grow: 1; position: relative; width: 100%; min-height: 0; }
     </style>
 </head>
 <body>
@@ -81,7 +80,7 @@
                 <div class="viz-card"><h3>相關係數矩陣</h3><div id="heatmap" style="flex-grow:1;"></div></div>
                 <div class="viz-card">
                     <h3>接股風險貢獻</h3>
-                    <div style="flex-grow:1; position: relative;"><canvas id="riskChart"></canvas></div>
+                    <div class="chart-container"><canvas id="riskChart"></canvas></div>
                 </div>
             </div>
         </div>
@@ -92,87 +91,59 @@
 Chart.register(ChartDataLabels);
 let charts = {};
 
-async function fetchPrice(ticker) {
-    const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y`;
-    const proxies = [
-        `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`,
-        `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`
-    ];
-
-    for (let proxy of proxies) {
-        try {
-            const res = await fetch(proxy);
-            if (!res.ok) continue;
-            
-            let data;
-            if (proxy.includes("allorigins")) {
-                const json = await res.json();
-                data = JSON.parse(json.contents);
-            } else {
-                data = await res.json();
-            }
-            
-            const prices = data.chart.result[0].indicators.adjclose[0].adjclose.filter(p => p !== null);
-            if (prices.length > 0) return prices;
-        } catch (err) {
-            console.warn(`Proxy failed: ${proxy}`);
-        }
-    }
-    throw new Error(`${ticker} 數據獲取失敗，請檢查網路或更換代碼。`);
-}
-
-// 其餘 analyzeData, simulateFCN 邏輯保持不變，但確保採用多行 If 結構
-function analyzeData(priceSeries) {
-    const n = priceSeries.length;
-    const returns = priceSeries.map(s => {
-        let r = [];
-        for (let i = 1; i < s.length; i++) {
-            r.push(Math.log(s[i] / s[i-1]));
-        }
-        return r;
-    });
-    const vols = returns.map(r => {
-        const m = r.reduce((a, b) => a + b, 0) / r.length;
-        const v = r.reduce((a, b) => a + Math.pow(b - m, 2), 0) / (r.length - 1);
-        return Math.sqrt(v * 252);
-    });
-    const matrix = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => {
-        if (i === j) { return 1; }
-        const ri = returns[i], rj = returns[j];
-        const mi = ri.reduce((a, b) => a + b, 0) / ri.length;
-        const mj = rj.reduce((a, b) => a + b, 0) / rj.length;
-        let num = 0, d1 = 0, d2 = 0;
-        for (let k = 0; k < ri.length; k++) {
-            num += (ri[k] - mi) * (rj[k] - mj);
-            d1 += Math.pow(ri[k] - mi, 2);
-            d2 += Math.pow(rj[k] - mj, 2);
-        }
-        return num / Math.sqrt(d1 * d2);
-    }));
-    return { matrix, vols, nAssets: n };
-}
-
 async function runWorkflow() {
     const status = document.getElementById('status');
     const tickers = document.getElementById('tickers').value.split(',').map(s => s.trim().toUpperCase());
-    status.style.display = "block";
-    status.className = "loading";
-    status.innerText = "⏳ 正在嘗試多重代理連線並運算...";
-
+    status.style.display = "block"; 
+    status.innerText = "⏳ 模擬運算中...";
     try {
         const allPrices = await Promise.all(tickers.map(t => fetchPrice(t)));
         const analysis = analyzeData(allPrices);
         const results = simulateFCN(analysis);
         updateUI(tickers, analysis, results);
         status.innerText = "✅ 模擬完成";
-    } catch (e) {
-        status.className = "error";
-        status.innerText = "❌ " + e.message;
+    } catch (e) { 
+        status.innerText = "❌ 錯誤: " + e.message; 
     }
 }
 
-// 您的 simulateFCN 和 updateUI 邏輯... (此處補完前述代碼)
-// [提示：由於長度限制，請確保將您原本代碼中的 simulateFCN 與 updateUI 接在下方即可]
+async function fetchPrice(ticker) {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1y`;
+    const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
+    const data = await res.json();
+    return data.chart.result[0].indicators.adjclose[0].adjclose.filter(p => p !== null);
+}
+
+function analyzeData(priceSeries) {
+    const n = priceSeries.length;
+    const returns = priceSeries.map(s => {
+        let r = []; 
+        for(let i=1; i<s.length; i++) {
+            r.push(Math.log(s[i]/s[i-1]));
+        }
+        return r;
+    });
+    const vols = returns.map(r => {
+        const m = r.reduce((a,b)=>a+b,0)/r.length;
+        const v = r.reduce((a,b)=>a+Math.pow(b-m,2),0)/(r.length-1);
+        return Math.sqrt(v) * Math.sqrt(252);
+    });
+    const matrix = Array.from({length:n}, (_,i) => Array.from({length:n}, (_,j) => {
+        if(i===j) {
+            return 1;
+        }
+        const ri = returns[i], rj = returns[j];
+        const mi = ri.reduce((a,b)=>a+b,0)/ri.length, mj = rj.reduce((a,b)=>a+b,0)/rj.length;
+        let num=0, d1=0, d2=0;
+        for(let k=0; k<ri.length; k++){
+            num += (ri[k]-mi)*(rj[k]-mj); 
+            d1 += Math.pow(ri[k]-mi,2); 
+            d2 += Math.pow(rj[k]-mj,2);
+        }
+        return num/Math.sqrt(d1*d2);
+    }));
+    return { matrix, vols, nAssets: n };
+}
 
 function simulateFCN(analysis) {
     const tenor = parseInt(document.getElementById('C8').value);
@@ -189,8 +160,15 @@ function simulateFCN(analysis) {
     const L = Array.from({length:n},()=>Array(n).fill(0));
     for(let i=0; i<n; i++) {
         for(let j=0; j<=i; j++) {
-            let s = 0; for(let k=0; k<j; k++) s += L[i][k] * L[j][k];
-            L[i][j] = (i===j) ? Math.sqrt(Math.max(0, analysis.matrix[i][i]-s)) : (analysis.matrix[i][j]-s)/L[j][j];
+            let s = 0; 
+            for(let k=0; k<j; k++) {
+                s += L[i][k] * L[j][k];
+            }
+            if (i === j) {
+                L[i][j] = Math.sqrt(Math.max(0, analysis.matrix[i][i]-s));
+            } else {
+                L[i][j] = (analysis.matrix[i][j]-s)/L[j][j];
+            }
         }
     }
 
@@ -205,16 +183,27 @@ function simulateFCN(analysis) {
 
         for(let T=1; T<=totalDays; T++) {
             let zRaw = Array.from({length:n}, () => {
-                let u=0, v=0; while(u===0) u=Math.random(); while(v===0) v=Math.random();
+                let u=0, v=0; 
+                while(u===0) { u=Math.random(); } 
+                while(v===0) { v=Math.random(); }
                 return Math.sqrt(-2.0*Math.log(u))*Math.cos(2.0*Math.PI*v);
             });
             for(let i=0; i<n; i++){
-                let zCorr = 0; for(let j=0; j<=i; j++) zCorr += L[i][j] * zRaw[j];
-                S[i] *= Math.exp((rf - 0.5 * analysis.vols[i]**2)*(1/252) + analysis.vols[i]*Math.sqrt(1/252)*zCorr);
-                if(kiType === "A" && S[i] <= ki) { wasKI = true; }
+                let zCorr = 0; 
+                for(let j=0; j<=i; j++) {
+                    zCorr += L[i][j] * zRaw[j];
+                }
+                S[i] *= Math.exp((rf - 0.5 * Math.pow(analysis.vols[i], 2))*(1/252) + analysis.vols[i]*Math.sqrt(1/252)*zCorr);
+                if(kiType === "A" && S[i] <= ki) {
+                    wasKI = true;
+                }
             }
             if(T > gPeriodDays) {
-                for(let j=0; j<n; j++) { if(S[j] >= ko) { hasStockHitKO[j] = true; } }
+                for(let j=0; j<n; j++) {
+                    if(S[j] >= ko) {
+                        hasStockHitKO[j] = true;
+                    }
+                }
                 if(hasStockHitKO.every(val => val === true)) {
                     isKO = true;
                     let koMonth = Math.min(12, Math.floor((T - 6) / 21) + 1);
@@ -228,9 +217,12 @@ function simulateFCN(analysis) {
         if(!isKO) {
             res.durations += totalDays;
             let worst = Math.min(...S);
-            if(kiType === "E" && worst <= ki) { wasKI = true; }
+            if(kiType === "E" && worst <= ki) {
+                wasKI = true;
+            }
             if(wasKI && worst < strike) {
-                res.ki++; res.kiAssetCounts[S.indexOf(worst)]++;
+                res.ki++; 
+                res.kiAssetCounts[S.indexOf(worst)]++;
                 res.payoffs += (100*(totalDays-5)/252*cpn + 100*worst/strike) * Math.exp(-rf*totalDays/252);
             } else {
                 res.safe++;
@@ -246,7 +238,9 @@ function updateUI(tickers, analysis, res) {
     document.getElementById('vFV').innerText = (res.payoffs/sims).toFixed(2);
     document.getElementById('vDur').innerText = (res.durations/sims).toFixed(0);
 
-    if(charts.scene) { charts.scene.destroy(); }
+    if(charts.scene) {
+        charts.scene.destroy();
+    }
     let labels = res.koCounts.map((_, i) => `情境${i+1}`);
     labels.push("安全到期", "發生接股");
     charts.scene = new Chart(document.getElementById('scenarioChart'), {
@@ -258,7 +252,11 @@ function updateUI(tickers, analysis, res) {
                 backgroundColor: labels.map((_, i) => i < 12 ? '#4db6ac' : (i === 12 ? '#1a237e' : '#e53935'))
             }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { datalabels: { anchor: 'end', align: 'top', font: { weight: 'bold' } }, legend: { display: false } },
+            scales: { y: { beginAtZero: true, grid: { display: false } } }
+        }
     });
 
     Plotly.newPlot('heatmap', [{
@@ -267,14 +265,37 @@ function updateUI(tickers, analysis, res) {
         text: analysis.matrix.map(row => row.map(v => v.toFixed(2))), texttemplate: "%{text}"
     }], { margin: {t:0, b:40, l:40, r:0}, responsive: true });
 
-    if(charts.risk) { charts.risk.destroy(); }
+    if(charts.risk) {
+        charts.risk.destroy();
+    }
+    const riskData = res.kiAssetCounts.map(v => (v/sims*100).toFixed(1));
     charts.risk = new Chart(document.getElementById('riskChart'), {
         type: 'bar',
         data: {
             labels: tickers,
-            datasets: [{ data: res.kiAssetCounts.map(v => (v/sims*100).toFixed(1)), backgroundColor: '#e53935' }]
+            datasets: [{
+                data: riskData,
+                backgroundColor: '#e53935',
+                barThickness: 30
+            }]
         },
-        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
+        options: { 
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { 
+                legend: { display: false },
+                datalabels: { 
+                    anchor: 'end', align: 'right', formatter: v => v + '%',
+                    font: { weight: 'bold', size: 13 }, offset: 8, color: '#e53935'
+                } 
+            },
+            scales: { 
+                x: { beginAtZero: true, max: Math.max(...riskData.map(Number)) + 20, grid: { display: false }, ticks: { display: false } },
+                y: { grid: { display: false }, ticks: { font: { weight: 'bold' } } }
+            },
+            layout: { padding: { right: 60, top: 20, bottom: 20 } }
+        }
     });
 }
 </script>
