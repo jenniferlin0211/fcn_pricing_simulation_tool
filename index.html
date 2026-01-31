@@ -2,40 +2,35 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FCN 專業模擬分析 - 全功能版</title>
+    <title>結構型商品模擬分析</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background: #f4f7f9; margin: 0; padding: 15px; }
+        body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background: #f4f7f9; margin: 0; padding: 20px; }
         .container { max-width: 1500px; margin: auto; }
-        .header { background: #008080; color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
-        .main-layout { display: grid; grid-template-columns: 1fr; gap: 20px; }
-        @media (min-width: 992px) { .main-layout { grid-template-columns: 320px 1fr; } }
+        .header { background: #008080; color: white; padding: 15px 25px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .main-layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; }
         .sidebar { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .kpi-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-        .kpi-box { background: white; padding: 20px; border-radius: 15px; text-align: center; border-top: 6px solid #008080; }
-        .wide-card { background: white; padding: 25px; border-radius: 15px; margin-bottom: 20px; }
-        .viz-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
-        @media (min-width: 768px) { .viz-grid { grid-template-columns: 1fr 1fr; } }
-        .viz-card { background: white; padding: 20px; border-radius: 15px; min-height: 400px; display: flex; flex-direction: column; }
+        .kpi-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px; }
+        .kpi-box { background: white; padding: 20px; border-radius: 15px; text-align: center; border-top: 6px solid #008080; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
+        .wide-card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); margin-bottom: 20px; }
+        .viz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .viz-card { background: white; padding: 20px; border-radius: 15px; height: 420px; display: flex; flex-direction: column; }
+        h4 { margin: 15px 0 5px 0; color: #008080; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         label { display: block; margin-top: 10px; font-size: 12px; font-weight: bold; color: #666; }
-        input, select { width: 100%; padding: 10px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        button { width: 100%; padding: 16px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 18px; font-weight: bold; margin-top: 20px; }
-        #status { margin-top: 12px; padding: 10px; border-radius: 8px; display: none; background: #fffbe6; font-size: 13px; color: #856404; }
+        input, select { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 20px; transition: background 0.3s; }
+        button:hover { background: #006666; }
+        #status { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 8px; display: none; background: #e6fffa; }
+        .chart-container { flex-grow: 1; position: relative; width: 100%; min-height: 0; }
     </style>
 </head>
 <body>
-
 <div class="container">
-    <div class="header"><h2 style="margin:0">FCN 蒙地卡羅模擬 (API 強化版)</h2></div>
-
+    <div class="header"><h2 style="margin:0">結構型商品模擬分析 (蒙地卡羅)</h2></div>
     <div class="main-layout">
         <div class="sidebar">
-            <label style="color:#e53e3e">Twelve Data API Key</label>
-            <input type="text" id="apiKey" placeholder="請貼上你的 Key">
-            
             <h4>1. 標的設定</h4>
             <input type="text" id="tickers" value="TSM, NVDA, TSLA">
             
@@ -45,30 +40,32 @@
             <label>KO 門檻 (%)</label><input type="number" id="C9" value="100">
             <label>KI 門檻 (%)</label><input type="number" id="C10" value="60">
             <label>Strike (%)</label><input type="number" id="C11" value="75">
+            <label>KO Start (月)</label><input type="number" id="C12" value="1">
             <label>KI 形式</label>
-            <select id="C13"><option value="A">美式 (全程)</option><option value="E">歐式 (期末)</option></select>
+            <select id="C13">
+                <option value="A">美式 (全程)</option>
+                <option value="E">歐式 (期末)</option>
+            </select>
             
+            <h4>3. 模擬設定</h4>
             <label>無風險利率 (%)</label><input type="number" id="C14" value="4.5">
             <label>模擬次數</label><input type="number" id="idSims" value="1000">
             
-            <button onclick="runWorkflow()">開始模擬運算</button>
+            <button onclick="runWorkflow()">執行蒙地卡羅模擬</button>
             <div id="status"></div>
         </div>
-
         <div class="content-area">
             <div class="kpi-row">
                 <div class="kpi-box"><div>Fair Value (%)</div><div id="vFV" style="font-size:32px; font-weight:bold; color:#008080">--</div></div>
-                <div class="kpi-box" style="border-top-color:#38b2ac"><div>平均存續 (天)</div><div id="vDur" style="font-size:32px; font-weight:bold; color:#38b2ac">--</div></div>
+                <div class="kpi-box" style="border-top-color:#38b2ac"><div>平均存續期間 (天數)</div><div id="vDur" style="font-size:32px; font-weight:bold; color:#38b2ac">--</div></div>
             </div>
-
             <div class="wide-card">
-                <h3 style="margin-top:0">情境分佈 (12個月 KO vs 安全 vs 接股)</h3>
-                <div style="height: 350px;"><canvas id="scenarioChart"></canvas></div>
+                <h3 style="margin-top:0">情境分佈詳情</h3>
+                <div style="height: 380px;"><canvas id="scenarioChart"></canvas></div>
             </div>
-
             <div class="viz-grid">
                 <div class="viz-card"><h3>相關係數矩陣</h3><div id="heatmap" style="flex-grow:1;"></div></div>
-                <div class="viz-card"><h3>接股風險貢獻 (Worst-of)</h3><div style="flex-grow:1;"><canvas id="riskChart"></canvas></div></div>
+                <div class="viz-card"><h3>接股風險貢獻</h3><div class="chart-container"><canvas id="riskChart"></canvas></div></div>
             </div>
         </div>
     </div>
@@ -77,44 +74,46 @@
 <script>
 Chart.register(ChartDataLabels);
 let charts = {};
-
-async function fetchPrice(ticker, key) {
-    const url = `https://api.twelvedata.com/time_series?symbol=${ticker}&interval=1day&outputsize=252&apikey=${key}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.status === "ok") {
-        return data.values.map(v => parseFloat(v.close)).reverse();
-    } else {
-        throw new Error(ticker + ": " + data.message);
-    }
-}
+const API_KEY = '7523c49135064ce9a6deeb71dbfe44e7'; // 已內建您的 Key
 
 async function runWorkflow() {
-    const key = document.getElementById('apiKey').value;
     const status = document.getElementById('status');
     const tickers = document.getElementById('tickers').value.split(',').map(s => s.trim().toUpperCase());
-    
-    if (!key) { alert("請輸入 Twelve Data API Key"); return; }
-    
-    status.style.display = "block";
-    status.innerText = "⏳ 正在透過 API 獲取即時市場數據...";
+    status.style.display = "block"; 
+    status.innerText = "⏳ 正在抓取 API 數據...";
 
     try {
         const allPrices = [];
         for (let t of tickers) {
-            status.innerText = `⏳ 抓取 ${t} 中...`;
-            const p = await fetchPrice(t, key);
+            status.innerText = `⏳ 正在抓取 ${t} ...`;
+            const p = await fetchPrice(t);
             allPrices.push(p);
-            await new Promise(r => setTimeout(r, 600)); // 避免觸發 Rate Limit
+            // 免費版 API 頻率限制建議等待一下
+            await new Promise(resolve => setTimeout(resolve, 600)); 
         }
-        
-        status.innerText = "⏳ 數據 OK，執行蒙地卡羅運算...";
+
+        status.innerText = "⏳ 模擬運算中...";
         const analysis = analyzeData(allPrices);
         const results = simulateFCN(analysis);
         updateUI(tickers, analysis, results);
         status.innerText = "✅ 模擬完成";
-    } catch (e) {
-        status.innerText = "❌ 失敗: " + e.message;
+    } catch (e) { 
+        status.innerText = "❌ 錯誤: " + e.message; 
+        console.error(e);
+    }
+}
+
+async function fetchPrice(ticker) {
+    // 使用 Twelve Data API
+    const url = `https://api.twelvedata.com/time_series?symbol=${ticker}&interval=1day&outputsize=252&apikey=${API_KEY}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    
+    if (data.status === "ok") {
+        // 反轉數組使順序為：由舊到新
+        return data.values.map(v => parseFloat(v.close)).reverse();
+    } else {
+        throw new Error(`${ticker}: ${data.message || '連線受阻'}`);
     }
 }
 
@@ -128,7 +127,7 @@ function analyzeData(priceSeries) {
         return Math.sqrt(r.reduce((a,b)=>a+Math.pow(b-m,2),0)/(r.length-1)) * Math.sqrt(252);
     });
     const matrix = Array.from({length:n}, (_,i) => Array.from({length:n}, (_,j) => {
-        if(i===j) return 1.0;
+        if(i===j) return 1;
         const ri = returns[i], rj = returns[j];
         const mi = ri.reduce((a,b)=>a+b,0)/ri.length, mj = rj.reduce((a,b)=>a+b,0)/rj.length;
         let num=0, d1=0, d2=0;
@@ -145,6 +144,7 @@ function simulateFCN(analysis) {
     const ko = parseFloat(document.getElementById('C9').value)/100;
     const ki = parseFloat(document.getElementById('C10').value)/100;
     const strike = parseFloat(document.getElementById('C11').value)/100;
+    const gStart = parseInt(document.getElementById('C12').value);
     const kiType = document.getElementById('C13').value;
     const rf = parseFloat(document.getElementById('C14').value)/100;
     const sims = parseInt(document.getElementById('idSims').value);
@@ -155,16 +155,18 @@ function simulateFCN(analysis) {
     for(let i=0; i<n; i++) {
         for(let j=0; j<=i; j++) {
             let s = 0; for(let k=0; k<j; k++) s += L[i][k] * L[j][k];
+            // 這裡使用了多行 If 結構以確保穩定性
             if (i === j) {
-                L[i][j] = Math.sqrt(Math.max(0, analysis.matrix[i][i]-s));
+                L[i][j] = Math.sqrt(Math.max(0, analysis.matrix[i][i] - s));
             } else {
-                L[i][j] = (analysis.matrix[i][j]-s)/L[j][j];
+                L[i][j] = (analysis.matrix[i][j] - s) / L[j][j];
             }
         }
     }
 
     let res = { koCounts: new Array(12).fill(0), safe: 0, ki: 0, kiAssetCounts: new Array(n).fill(0), payoffs: 0, durations: 0 };
-    const totalDays = 21 * tenor;
+    const gPeriodDays = (21 * gStart) + 4;
+    const totalDays = (21 * tenor) + 5;
 
     for(let s=0; s<sims; s++) {
         let S = new Array(n).fill(1.0);
@@ -179,15 +181,15 @@ function simulateFCN(analysis) {
             for(let i=0; i<n; i++){
                 let zCorr = 0; for(let j=0; j<=i; j++) zCorr += L[i][j] * zRaw[j];
                 S[i] *= Math.exp((rf - 0.5 * analysis.vols[i]**2)*(1/252) + analysis.vols[i]*Math.sqrt(1/252)*zCorr);
-                if (kiType === "A" && S[i] <= ki) { wasKI = true; }
+                if(kiType === "A" && S[i] <= ki) wasKI = true;
             }
-            if(T % 21 === 0) {
-                for(let j=0; j<n; j++) { if(S[j] >= ko) hasStockHitKO[j] = true; }
+            if(T > gPeriodDays) {
+                for(let j=0; j<n; j++) if(S[j] >= ko) hasStockHitKO[j] = true;
                 if(hasStockHitKO.every(val => val === true)) {
                     isKO = true;
-                    let m = Math.min(12, Math.floor(T / 21));
-                    res.koCounts[m-1]++;
-                    res.payoffs += 100 * (1 + (T/252)*cpn) * Math.exp(-rf*T/252);
+                    let koMonth = Math.min(12, Math.floor((T - 6) / 21) + 1);
+                    res.koCounts[koMonth-1]++;
+                    res.payoffs += 100 * (1 + (T-5)/252*cpn) * Math.exp(-rf*T/252);
                     res.durations += T;
                     break;
                 }
@@ -196,13 +198,13 @@ function simulateFCN(analysis) {
         if(!isKO) {
             res.durations += totalDays;
             let worst = Math.min(...S);
-            if (kiType === "E" && worst <= ki) { wasKI = true; }
+            if(kiType === "E" && worst <= ki) wasKI = true;
             if(wasKI && worst < strike) {
                 res.ki++; res.kiAssetCounts[S.indexOf(worst)]++;
-                res.payoffs += (100*(totalDays/252)*cpn + 100*worst/strike) * Math.exp(-rf*totalDays/252);
+                res.payoffs += (100*(totalDays-5)/252*cpn + 100*worst/strike) * Math.exp(-rf*totalDays/252);
             } else {
                 res.safe++;
-                res.payoffs += 100 * (1 + (totalDays/252)*cpn) * Math.exp(-rf*totalDays/252);
+                res.payoffs += 100 * (1 + (totalDays-5)/252*cpn) * Math.exp(-rf*totalDays/252);
             }
         }
     }
@@ -215,30 +217,58 @@ function updateUI(tickers, analysis, res) {
     document.getElementById('vDur').innerText = (res.durations/sims).toFixed(0);
 
     if(charts.scene) charts.scene.destroy();
+    let labels = res.koCounts.map((_, i) => `情境${i+1}`);
+    labels.push("情境13\n安全到期", "情境14\n發生接股");
     charts.scene = new Chart(document.getElementById('scenarioChart'), {
         type: 'bar',
         data: {
-            labels: [...res.koCounts.map((_,i)=>`M${i+1}`), "安全到期", "發生接股"],
+            labels: labels,
             datasets: [{
                 data: [...res.koCounts, res.safe, res.ki],
-                backgroundColor: [...new Array(12).fill('#4db6ac'), '#1a237e', '#e53935']
+                backgroundColor: labels.map((_, i) => i < 12 ? '#4db6ac' : (i === 12 ? '#1a237e' : '#e53935'))
             }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { datalabels: { anchor: 'end', align: 'top', font: { weight: 'bold' } }, legend: { display: false } },
+            scales: { y: { beginAtZero: true, grid: { display: false } } }
+        }
     });
 
     Plotly.newPlot('heatmap', [{
-        z: analysis.matrix, x: tickers, y: tickers, type: 'heatmap', colorscale: 'Viridis'
+        z: analysis.matrix, x: tickers, y: tickers, type: 'heatmap',
+        colorscale: [[0, '#f2fdfd'], [0.5, '#4db6ac'], [1, '#008080']],
+        text: analysis.matrix.map(row => row.map(v => v.toFixed(2))), texttemplate: "%{text}"
     }], { margin: {t:0, b:40, l:40, r:0}, responsive: true });
 
     if(charts.risk) charts.risk.destroy();
+    const riskData = res.kiAssetCounts.map(v => (v/sims*100).toFixed(1));
     charts.risk = new Chart(document.getElementById('riskChart'), {
         type: 'bar',
         data: {
             labels: tickers,
-            datasets: [{ data: res.kiAssetCounts.map(v => (v/sims*100).toFixed(1)), backgroundColor: '#e53935' }]
+            datasets: [{
+                data: riskData,
+                backgroundColor: '#e53935',
+                barThickness: 30
+            }]
         },
-        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
+        options: { 
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { 
+                legend: { display: false },
+                datalabels: { 
+                    anchor: 'end', align: 'right', formatter: v => v + '%',
+                    font: { weight: 'bold', size: 13 }, offset: 8, color: '#e53935'
+                } 
+            },
+            scales: { 
+                x: { beginAtZero: true, max: Math.max(...riskData.map(Number)) + 20, grid: { display: false }, ticks: { display: false } },
+                y: { grid: { display: false }, ticks: { font: { weight: 'bold' } } }
+            }
+        }
     });
 }
 </script>
