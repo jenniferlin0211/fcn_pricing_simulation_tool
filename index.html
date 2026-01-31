@@ -3,64 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FCN 模擬分析 (API Key 版)</title>
+    <title>FCN 專業模擬分析 - 全功能版</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f9; margin: 0; padding: 20px; }
-        .container { max-width: 1400px; margin: auto; }
-        .sidebar { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 320px; float: left; }
-        .content { margin-left: 360px; }
-        .card { background: white; padding: 25px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
-        input { width: 100%; padding: 12px; margin-top: 8px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background: #f4f7f9; margin: 0; padding: 15px; }
+        .container { max-width: 1500px; margin: auto; }
+        .header { background: #008080; color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
+        .main-layout { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        @media (min-width: 992px) { .main-layout { grid-template-columns: 320px 1fr; } }
+        .sidebar { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .kpi-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .kpi-box { background: white; padding: 20px; border-radius: 15px; text-align: center; border-top: 6px solid #008080; }
+        .wide-card { background: white; padding: 25px; border-radius: 15px; margin-bottom: 20px; }
+        .viz-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        @media (min-width: 768px) { .viz-grid { grid-template-columns: 1fr 1fr; } }
+        .viz-card { background: white; padding: 20px; border-radius: 15px; min-height: 400px; display: flex; flex-direction: column; }
+        label { display: block; margin-top: 10px; font-size: 12px; font-weight: bold; color: #666; }
+        input, select { width: 100%; padding: 10px; margin-top: 4px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
         button { width: 100%; padding: 16px; background: #008080; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 18px; font-weight: bold; margin-top: 20px; }
-        #status { margin-top: 15px; padding: 12px; border-radius: 8px; display: none; background: #e6fffa; border: 1px solid #b2f5ea; font-size: 14px; }
+        #status { margin-top: 12px; padding: 10px; border-radius: 8px; display: none; background: #fffbe6; font-size: 13px; color: #856404; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="sidebar">
-        <h3 style="margin:0; color:#008080;">FCN 專業模擬器</h3>
-        
-        <label style="color:red; font-weight:bold;">1. API Key (必填)</label>
-        <input type="text" id="apiKey" placeholder="貼上你的 API Key" value="">
-        
-        <h4>2. 標的與產品</h4>
-        <input type="text" id="tickers" value="TSM,NVDA,TSLA">
-        <label>天期 (月)</label><input type="number" id="C8" value="12">
-        <label>配息 (%)</label><input type="number" id="C16" value="15">
-        <label>KO (%)</label><input type="number" id="C9" value="100">
-        <label>KI (%)</label><input type="number" id="C10" value="60">
-        <label>Strike (%)</label><input type="number" id="C11" value="75">
-        
-        <button onclick="runWorkflow()">執行 API 數據分析</button>
-        <div id="status"></div>
-    </div>
+    <div class="header"><h2 style="margin:0">FCN 蒙地卡羅模擬 (API 強化版)</h2></div>
 
-    <div class="content">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-            <div class="card" style="text-align:center;"><div>Fair Value (%)</div><div id="vFV" style="font-size:36px; font-weight:bold; color:#008080">--</div></div>
-            <div class="card" style="text-align:center;"><div>平均存續 (天)</div><div id="vDur" style="font-size:36px; font-weight:bold; color:#38b2ac">--</div></div>
+    <div class="main-layout">
+        <div class="sidebar">
+            <label style="color:#e53e3e">Twelve Data API Key</label>
+            <input type="text" id="apiKey" placeholder="請貼上你的 Key">
+            
+            <h4>1. 標的設定</h4>
+            <input type="text" id="tickers" value="TSM, NVDA, TSLA">
+            
+            <h4>2. 產品條件</h4>
+            <label>天期 (月)</label><input type="number" id="C8" value="12">
+            <label>年化配息 (%)</label><input type="number" id="C16" value="15">
+            <label>KO 門檻 (%)</label><input type="number" id="C9" value="100">
+            <label>KI 門檻 (%)</label><input type="number" id="C10" value="60">
+            <label>Strike (%)</label><input type="number" id="C11" value="75">
+            <label>KI 形式</label>
+            <select id="C13"><option value="A">美式 (全程)</option><option value="E">歐式 (期末)</option></select>
+            
+            <label>無風險利率 (%)</label><input type="number" id="C14" value="4.5">
+            <label>模擬次數</label><input type="number" id="idSims" value="1000">
+            
+            <button onclick="runWorkflow()">開始模擬運算</button>
+            <div id="status"></div>
         </div>
-        <div class="card"><div id="heatmap" style="height: 400px;"></div></div>
+
+        <div class="content-area">
+            <div class="kpi-row">
+                <div class="kpi-box"><div>Fair Value (%)</div><div id="vFV" style="font-size:32px; font-weight:bold; color:#008080">--</div></div>
+                <div class="kpi-box" style="border-top-color:#38b2ac"><div>平均存續 (天)</div><div id="vDur" style="font-size:32px; font-weight:bold; color:#38b2ac">--</div></div>
+            </div>
+
+            <div class="wide-card">
+                <h3 style="margin-top:0">情境分佈 (12個月 KO vs 安全 vs 接股)</h3>
+                <div style="height: 350px;"><canvas id="scenarioChart"></canvas></div>
+            </div>
+
+            <div class="viz-grid">
+                <div class="viz-card"><h3>相關係數矩陣</h3><div id="heatmap" style="flex-grow:1;"></div></div>
+                <div class="viz-card"><h3>接股風險貢獻 (Worst-of)</h3><div style="flex-grow:1;"><canvas id="riskChart"></canvas></div></div>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
-// ✅ 使用 API Key 抓取數據 (以 Twelve Data 為例)
+Chart.register(ChartDataLabels);
+let charts = {};
+
 async function fetchPrice(ticker, key) {
-    // interval=1day, outputsize=252 (一年交易日)
     const url = `https://api.twelvedata.com/time_series?symbol=${ticker}&interval=1day&outputsize=252&apikey=${key}`;
-    
     const res = await fetch(url);
     const data = await res.json();
-    
     if (data.status === "ok") {
-        // 將數據反轉(由舊到新)並提取收盤價
         return data.values.map(v => parseFloat(v.close)).reverse();
     } else {
-        throw new Error(`${ticker} 抓取失敗: ${data.message}`);
+        throw new Error(ticker + ": " + data.message);
     }
 }
 
@@ -69,69 +94,48 @@ async function runWorkflow() {
     const status = document.getElementById('status');
     const tickers = document.getElementById('tickers').value.split(',').map(s => s.trim().toUpperCase());
     
-    if (!key) {
-        alert("請先輸入 API Key！");
-        return;
-    }
-
+    if (!key) { alert("請輸入 Twelve Data API Key"); return; }
+    
     status.style.display = "block";
-    status.innerText = "⏳ 透過 API 獲取即時數據...";
+    status.innerText = "⏳ 正在透過 API 獲取即時市場數據...";
 
     try {
-        // Twelve Data 免費版可能需要一個一個抓以避免 Rate Limit
         const allPrices = [];
         for (let t of tickers) {
-            status.innerText = `⏳ 正在抓取 ${t}...`;
+            status.innerText = `⏳ 抓取 ${t} 中...`;
             const p = await fetchPrice(t, key);
             allPrices.push(p);
-            // 免費版 API 通常有速度限制，稍微停一下
-            await new Promise(r => setTimeout(r, 500));
+            await new Promise(r => setTimeout(r, 600)); // 避免觸發 Rate Limit
         }
-
-        status.innerText = "⏳ 數據下載成功，模擬運算中...";
+        
+        status.innerText = "⏳ 數據 OK，執行蒙地卡羅運算...";
         const analysis = analyzeData(allPrices);
         const results = simulateFCN(analysis);
         updateUI(tickers, analysis, results);
         status.innerText = "✅ 模擬完成";
-
     } catch (e) {
-        status.innerText = "❌ 錯誤: " + e.message;
-        console.error(e);
+        status.innerText = "❌ 失敗: " + e.message;
     }
 }
 
-// ⚠️ 嚴格多行 If 結構的 FCN 核心邏輯
 function analyzeData(priceSeries) {
     const n = priceSeries.length;
     const returns = priceSeries.map(s => {
-        let r = [];
-        for (let i = 1; i < s.length; i++) {
-            r.push(Math.log(s[i] / s[i-1]));
-        }
-        return r;
+        let r = []; for(let i=1; i<s.length; i++) r.push(Math.log(s[i]/s[i-1])); return r;
     });
-
     const vols = returns.map(r => {
-        const m = r.reduce((a, b) => a + b, 0) / r.length;
-        const v = r.reduce((a, b) => a + Math.pow(b - m, 2), 0) / (r.length - 1);
-        return Math.sqrt(v) * Math.sqrt(252);
+        const m = r.reduce((a,b)=>a+b,0)/r.length;
+        return Math.sqrt(r.reduce((a,b)=>a+Math.pow(b-m,2),0)/(r.length-1)) * Math.sqrt(252);
     });
-
-    const matrix = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => {
-        if (i === j) {
-            return 1.0;
-        } else {
-            const ri = returns[i], rj = returns[j];
-            const mi = ri.reduce((a, b) => a + b, 0) / ri.length;
-            const mj = rj.reduce((a, b) => a + b, 0) / rj.length;
-            let num = 0, d1 = 0, d2 = 0;
-            for (let k = 0; k < ri.length; k++) {
-                num += (ri[k] - mi) * (rj[k] - mj);
-                d1 += Math.pow(ri[k] - mi, 2);
-                d2 += Math.pow(rj[k] - mj, 2);
-            }
-            return num / Math.sqrt(d1 * d2);
+    const matrix = Array.from({length:n}, (_,i) => Array.from({length:n}, (_,j) => {
+        if(i===j) return 1.0;
+        const ri = returns[i], rj = returns[j];
+        const mi = ri.reduce((a,b)=>a+b,0)/ri.length, mj = rj.reduce((a,b)=>a+b,0)/rj.length;
+        let num=0, d1=0, d2=0;
+        for(let k=0; k<ri.length; k++){
+            num += (ri[k]-mi)*(rj[k]-mj); d1 += Math.pow(ri[k]-mi,2); d2 += Math.pow(rj[k]-mj,2);
         }
+        return num/Math.sqrt(d1*d2);
     }));
     return { matrix, vols, nAssets: n };
 }
@@ -139,77 +143,103 @@ function analyzeData(priceSeries) {
 function simulateFCN(analysis) {
     const tenor = parseInt(document.getElementById('C8').value);
     const ko = parseFloat(document.getElementById('C9').value)/100;
+    const ki = parseFloat(document.getElementById('C10').value)/100;
     const strike = parseFloat(document.getElementById('C11').value)/100;
+    const kiType = document.getElementById('C13').value;
+    const rf = parseFloat(document.getElementById('C14').value)/100;
+    const sims = parseInt(document.getElementById('idSims').value);
     const cpn = parseFloat(document.getElementById('C16').value)/100;
-    const rf = 0.045, sims = 1000;
-    
+
     const n = analysis.nAssets;
     const L = Array.from({length:n},()=>Array(n).fill(0));
-    
-    // Cholesky 分解
     for(let i=0; i<n; i++) {
         for(let j=0; j<=i; j++) {
-            let s = 0;
-            for(let k=0; k<j; k++) { s += L[i][k] * L[j][k]; }
+            let s = 0; for(let k=0; k<j; k++) s += L[i][k] * L[j][k];
             if (i === j) {
-                L[i][j] = Math.sqrt(Math.max(0, analysis.matrix[i][i] - s));
+                L[i][j] = Math.sqrt(Math.max(0, analysis.matrix[i][i]-s));
             } else {
-                L[i][j] = (analysis.matrix[i][j] - s) / L[j][j];
+                L[i][j] = (analysis.matrix[i][j]-s)/L[j][j];
             }
         }
     }
 
-    let res = { payoffs: 0, durations: 0 };
+    let res = { koCounts: new Array(12).fill(0), safe: 0, ki: 0, kiAssetCounts: new Array(n).fill(0), payoffs: 0, durations: 0 };
     const totalDays = 21 * tenor;
 
     for(let s=0; s<sims; s++) {
         let S = new Array(n).fill(1.0);
-        let isKO = false;
-        let day = totalDays;
+        let wasKI = false, isKO = false;
+        let hasStockHitKO = new Array(n).fill(false);
 
         for(let T=1; T<=totalDays; T++) {
             let zRaw = Array.from({length:n}, () => {
-                let u=0, v=0;
-                while(u===0) { u=Math.random(); }
-                while(v===0) { v=Math.random(); }
-                return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+                let u=0, v=0; while(u===0) u=Math.random(); while(v===0) v=Math.random();
+                return Math.sqrt(-2.0*Math.log(u))*Math.cos(2.0*Math.PI*v);
             });
-
-            for(let i=0; i<n; i++) {
-                let zCorr = 0;
-                for(let j=0; j<=i; j++) { zCorr += L[i][j] * zRaw[j]; }
+            for(let i=0; i<n; i++){
+                let zCorr = 0; for(let j=0; j<=i; j++) zCorr += L[i][j] * zRaw[j];
                 S[i] *= Math.exp((rf - 0.5 * analysis.vols[i]**2)*(1/252) + analysis.vols[i]*Math.sqrt(1/252)*zCorr);
+                if (kiType === "A" && S[i] <= ki) { wasKI = true; }
             }
-
-            if (T % 21 === 0 && Math.min(...S) >= ko) {
-                isKO = true; day = T;
-                res.payoffs += 100 * (1 + (T/252)*cpn) * Math.exp(-rf*T/252);
-                break;
+            if(T % 21 === 0) {
+                for(let j=0; j<n; j++) { if(S[j] >= ko) hasStockHitKO[j] = true; }
+                if(hasStockHitKO.every(val => val === true)) {
+                    isKO = true;
+                    let m = Math.min(12, Math.floor(T / 21));
+                    res.koCounts[m-1]++;
+                    res.payoffs += 100 * (1 + (T/252)*cpn) * Math.exp(-rf*T/252);
+                    res.durations += T;
+                    break;
+                }
             }
         }
-
-        if (!isKO) {
+        if(!isKO) {
+            res.durations += totalDays;
             let worst = Math.min(...S);
-            if (worst < strike) {
-                res.payoffs += (100 * worst / strike) * Math.exp(-rf*totalDays/252);
+            if (kiType === "E" && worst <= ki) { wasKI = true; }
+            if(wasKI && worst < strike) {
+                res.ki++; res.kiAssetCounts[S.indexOf(worst)]++;
+                res.payoffs += (100*(totalDays/252)*cpn + 100*worst/strike) * Math.exp(-rf*totalDays/252);
             } else {
+                res.safe++;
                 res.payoffs += 100 * (1 + (totalDays/252)*cpn) * Math.exp(-rf*totalDays/252);
             }
         }
-        res.durations += day;
     }
     return res;
 }
 
 function updateUI(tickers, analysis, res) {
-    const sims = 1000;
+    const sims = parseInt(document.getElementById('idSims').value);
     document.getElementById('vFV').innerText = (res.payoffs/sims).toFixed(2);
     document.getElementById('vDur').innerText = (res.durations/sims).toFixed(0);
-    
+
+    if(charts.scene) charts.scene.destroy();
+    charts.scene = new Chart(document.getElementById('scenarioChart'), {
+        type: 'bar',
+        data: {
+            labels: [...res.koCounts.map((_,i)=>`M${i+1}`), "安全到期", "發生接股"],
+            datasets: [{
+                data: [...res.koCounts, res.safe, res.ki],
+                backgroundColor: [...new Array(12).fill('#4db6ac'), '#1a237e', '#e53935']
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+
     Plotly.newPlot('heatmap', [{
-        z: analysis.matrix, x: tickers, y: tickers, type: 'heatmap',
-        colorscale: 'Viridis', text: analysis.matrix.map(row => row.map(v => v.toFixed(2))), texttemplate: "%{text}"
-    }], { title: '相關係數驗證', margin: {t:50, b:40, l:40, r:0} });
+        z: analysis.matrix, x: tickers, y: tickers, type: 'heatmap', colorscale: 'Viridis'
+    }], { margin: {t:0, b:40, l:40, r:0}, responsive: true });
+
+    if(charts.risk) charts.risk.destroy();
+    charts.risk = new Chart(document.getElementById('riskChart'), {
+        type: 'bar',
+        data: {
+            labels: tickers,
+            datasets: [{ data: res.kiAssetCounts.map(v => (v/sims*100).toFixed(1)), backgroundColor: '#e53935' }]
+        },
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
+    });
 }
 </script>
 </body>
